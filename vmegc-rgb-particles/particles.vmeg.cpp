@@ -173,81 +173,68 @@ volatile Buffer dyTable[SCREEN_HEIGHT * PARTICLE_COUNT];
 volatile Buffer frame[FRAME_STRIDE * SCREEN_HEIGHT];
 
 .kernel move direct {
-  Transfer posX = { memory: stateX, count: PARTICLE_COUNT - 1 };
-  Transfer velX = { memory: stateVx, count: PARTICLE_COUNT - 1 };
-  Transfer posY = { memory: stateY, count: PARTICLE_COUNT - 1 };
-  Transfer velY = { memory: stateVy, count: PARTICLE_COUNT - 1 };
-  Transfer outX = { memory: stateX, count: PARTICLE_COUNT - 1 };
-  Transfer outY = { memory: stateY, count: PARTICLE_COUNT - 1 };
+  .with axis in 0..1;
+  .as w[axis];
+
+  Transfer posT = { memory: movePos, count: PARTICLE_COUNT - 1 };
+  Transfer velT = { memory: moveVel, count: PARTICLE_COUNT - 1 };
+  Transfer outT = { memory: movePos, count: PARTICLE_COUNT - 1 };
 
   .load {
-    .transfer = posX;
-    .scope = global;
+    .transfer = posT;
+    .scope = local;
     .offsets {
       .top0 = 0;
-    }
-  }
-
-  .load {
-    .transfer = velX;
-    .scope = global;
-    .offsets {
-      .top1 = 0;
-    }
-  }
-
-  .load {
-    .transfer = posY;
-    .scope = global;
-    .offsets {
       .top2 = 0;
     }
   }
 
   .load {
-    .transfer = velY;
-    .scope = global;
+    .transfer = velT;
+    .scope = local;
     .offsets {
+      .top1 = 0;
       .top3 = 0;
     }
   }
 
   Agu lanes = { count: PARTICLE_COUNT - 1 };
+  Agu delayed = { count: PARTICLE_COUNT + 8, offset: -9 };
   Agu write = { count: PARTICLE_COUNT - 1, cyc: auto };
+  Staging sum, below, above, turns, back, again;
 
   .pe0 {
     .top = lanes;
-    .write = write;
-    .spad = (top0 + top1) & 1023;
+    sum = top0 + top1;
   }
 
   .pe1 {
     .top = lanes;
+    below = (sum + 0) >> 23;
   }
 
   .pe2 {
-    .top = lanes;
-    .write = write;
-    .spad = (top2 + top3) & 1023;
+    .top = delayed;
+    above = (sum + (0 - (960 - axis * 416))) >> 23;
+    turns = below + above;
   }
 
   .pe3 {
-    .top = lanes;
+    .top = delayed;
+    back = turns * (960 - axis * 416);
+    again = top2 + top3;
+  }
+
+  .pe0 {
+    .write = write;
+    .spad = subacst(again, back, 0 - (960 - axis * 416));
   }
 
   .store {
-    .transfer = outX;
-    .scope = global;
+    .transfer = outT;
+    .scope = local;
     .offsets {
       .base0 = 0;
-    }
-  }
-
-  .store {
-    .transfer = outY;
-    .scope = global;
-    .offsets {
-      .base2 = 0;
     }
   }
 }
@@ -593,7 +580,22 @@ volatile Buffer frame[FRAME_STRIDE * SCREEN_HEIGHT];
 
 void meLibOnProcess(void) {
   while (1) {
-    @kernel move config | exec {
+    {
+      volatile Buffer* movePos = stateX;
+      volatile Buffer* moveVel = stateVx;
+
+      @kernel move config | exec {
+        .as w[0];
+      }
+    }
+
+    {
+      volatile Buffer* movePos = stateY;
+      volatile Buffer* moveVel = stateVy;
+
+      @kernel move config | exec {
+        .as w[1];
+      }
     }
 
     for (int k = 0; k < 5; k++) {
