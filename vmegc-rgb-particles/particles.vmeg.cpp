@@ -155,34 +155,55 @@ volatile Buffer stateY[PARTICLE_COUNT] = {
   368, 474, 60, 166,
   272, 378, 484, 70,
 };
-volatile Buffer stateVx[PARTICLE_COUNT] = {
-  0xfffffff4, 2, 0xfffffff6, 4,
-  0xfffffff8, 6, 0xfffffffa, 8,
-  0xfffffffc, 10, 0xfffffffe, 12,
-  2, 0xfffffff4, 2, 0xfffffff6,
+volatile Buffer velocityX[PARTICLE_COUNT] = {
+  4294967284, 2, 4294967286, 4,
+  4294967288, 6, 4294967290, 8,
+  4294967292, 10, 4294967294, 12,
+  2, 4294967284, 2, 4294967286,
 };
-volatile Buffer stateVy[PARTICLE_COUNT] = {
-  0xfffffff6, 2, 10, 0xfffffffe,
-  8, 0xfffffffc, 6, 0xfffffffa,
-  4, 0xfffffff8, 2, 0xfffffff6,
-  2, 10, 0xfffffffe, 8,
+volatile Buffer velocityY[PARTICLE_COUNT] = {
+  4294967286, 2, 10, 4294967294,
+  8, 4294967292, 6, 4294967290,
+  4, 4294967288, 2, 4294967286,
+  2, 10, 4294967294, 8,
+};
+volatile Buffer chordStartX[PARTICLE_COUNT] = {
+  680, 8, 478, 2,
+  840, 0, 680, 230,
+  956, 666, 880, 450,
+  0, 526, 98, 310,
+};
+volatile Buffer chordStartY[PARTICLE_COUNT] = {
+  540, 0, 2, 508,
+  0, 350, 0, 538,
+  84, 538, 0, 536,
+  264, 8, 542, 6,
+};
+volatile Buffer chordLength[PARTICLE_COUNT] = {
+  55, 272, 48, 240,
+  68, 88, 91, 90,
+  115, 30, 272, 43,
+  140, 44, 272, 32,
+};
+volatile Buffer chordPhase[PARTICLE_COUNT] = {
+  50, 73, 25, 75,
+  58, 75, 26, 46,
+  71, 8, 30, 37,
+  4, 37, 29, 8,
 };
 
 volatile Buffer profileGx[FRAME_STRIDE * PARTICLE_COUNT];
 volatile Buffer dyTable[SCREEN_HEIGHT * PARTICLE_COUNT];
 volatile Buffer frame[FRAME_STRIDE * SCREEN_HEIGHT];
 
-.kernel move direct {
-  .with axis in 0..1;
-  .as w[axis];
-
-  Transfer posT = { memory: movePos, count: PARTICLE_COUNT - 1 };
-  Transfer velT = { memory: moveVel, count: PARTICLE_COUNT - 1 };
-  Transfer outT = { memory: movePos, count: PARTICLE_COUNT - 1 };
+.kernel advance direct {
+  Transfer phaseIn = { memory: chordPhase, count: PARTICLE_COUNT - 1 };
+  Transfer lengthIn = { memory: chordLength, count: PARTICLE_COUNT - 1 };
+  Transfer phaseOut = { memory: chordPhase, count: PARTICLE_COUNT - 1 };
 
   .load {
-    .transfer = posT;
-    .scope = local;
+    .transfer = phaseIn;
+    .scope = global;
     .offsets {
       .top0 = 0;
       .top2 = 0;
@@ -190,8 +211,8 @@ volatile Buffer frame[FRAME_STRIDE * SCREEN_HEIGHT];
   }
 
   .load {
-    .transfer = velT;
-    .scope = local;
+    .transfer = lengthIn;
+    .scope = global;
     .offsets {
       .top1 = 0;
       .top3 = 0;
@@ -199,42 +220,102 @@ volatile Buffer frame[FRAME_STRIDE * SCREEN_HEIGHT];
   }
 
   Agu lanes = { count: PARTICLE_COUNT - 1 };
-  Agu delayed = { count: PARTICLE_COUNT + 8, offset: -9 };
+  Agu delayed = { count: PARTICLE_COUNT + 5, offset: -6 };
   Agu write = { count: PARTICLE_COUNT - 1, cyc: auto };
-  Staging sum, below, above, turns, back, again;
+  Staging left, sign, keep, again;
 
   .pe0 {
     .top = lanes;
-    sum = top0 + top1;
+    left = subacst(top0, top1, 1);
   }
 
   .pe1 {
     .top = lanes;
-    below = (sum + 0) >> 23;
+    sign = (left + 0) >> 23;
   }
 
   .pe2 {
     .top = delayed;
-    above = (sum + (0 - (960 - axis * 416))) >> 23;
-    turns = below + above;
+    keep = top3 & sign;
   }
 
   .pe3 {
     .top = delayed;
-    back = turns * (960 - axis * 416);
-    again = top2 + top3;
-  }
-
-  .pe0 {
     .write = write;
-    .spad = subacst(again, back, 0 - (960 - axis * 416));
+    again = subacst(top2, top3, 1);
+    .spad = again + keep;
   }
 
   .store {
-    .transfer = outT;
+    .transfer = phaseOut;
+    .scope = global;
+    .offsets {
+      .base3 = 0;
+    }
+  }
+}
+
+.kernel place direct {
+  Transfer speedIn = { memory: placeSpeed, count: PARTICLE_COUNT - 1 };
+  Transfer phaseIn = { memory: chordPhase, count: PARTICLE_COUNT - 1 };
+  Transfer startIn = { memory: placeStart, count: PARTICLE_COUNT - 1 };
+  Transfer positionOut = { memory: placeOut, count: PARTICLE_COUNT - 1 };
+
+  .load {
+    .transfer = speedIn;
     .scope = local;
     .offsets {
-      .base0 = 0;
+      .top0 = 0;
+    }
+  }
+
+  .load {
+    .transfer = phaseIn;
+    .scope = global;
+    .offsets {
+      .top1 = 0;
+    }
+  }
+
+  .load {
+    .transfer = startIn;
+    .scope = local;
+    .offsets {
+      .top2 = 0;
+    }
+  }
+
+  .regs {
+    .icn {
+      .swen = 0;
+    }
+  }
+
+  Agu lanes = { count: PARTICLE_COUNT - 1 };
+  Agu delayed = { count: PARTICLE_COUNT + 2, offset: -3 };
+  Agu write = { count: PARTICLE_COUNT - 1, cyc: auto };
+  Staging walk;
+
+  .pe0 {
+    .top = lanes;
+    walk = top0 * top1;
+  }
+
+  .pe1 {
+    .top = lanes;
+    .write = write;
+    .spad = walk + top2;
+  }
+
+  .pe2 {
+    .top = delayed;
+  }
+
+  .store {
+    .transfer = positionOut;
+    .scope = local;
+    .offsets {
+      .base1 = 0;
     }
   }
 }
@@ -580,21 +661,24 @@ volatile Buffer frame[FRAME_STRIDE * SCREEN_HEIGHT];
 
 void meLibOnProcess(void) {
   while (1) {
-    {
-      volatile Buffer* movePos = stateX;
-      volatile Buffer* moveVel = stateVx;
+    @kernel advance config | exec {
+    }
 
-      @kernel move config | exec {
-        .as w[0];
+    {
+      volatile Buffer* placeSpeed = velocityX;
+      volatile Buffer* placeStart = chordStartX;
+      volatile Buffer* placeOut = stateX;
+
+      @kernel place config | exec {
       }
     }
 
     {
-      volatile Buffer* movePos = stateY;
-      volatile Buffer* moveVel = stateVy;
+      volatile Buffer* placeSpeed = velocityY;
+      volatile Buffer* placeStart = chordStartY;
+      volatile Buffer* placeOut = stateY;
 
-      @kernel move config | exec {
-        .as w[1];
+      @kernel place config | exec {
       }
     }
 
