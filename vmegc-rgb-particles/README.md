@@ -8,7 +8,13 @@ A vmeg sample: 16 round particles drawn into the frame buffer of the PSP by the 
 cd vmegc-rgb-particles
 mkdir build && cd build
 cmake ..
-make
+make clean; make;
+```
+
+or
+```
+cmake -DVMEGC_COMPAT=fat ..
+make clean; make;
 ```
 
 ## Running
