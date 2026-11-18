@@ -1,1 +1,3 @@
 build/
+*PRIVATE.md
+/*.json
