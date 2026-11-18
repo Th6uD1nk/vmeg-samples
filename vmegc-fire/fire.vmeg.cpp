@@ -154,11 +154,35 @@ static void firePaint(const volatile u32* field) {
 
 void meLibOnProcess(void) {
   u32 done = 0;
+  int phase = 0;
+  int envPhase = 0;
   while (1) {
     while (fireRequest == done) {
     }
     done = fireRequest;
+    volatile Buffer* src = phase ? heatB : heatA;
+    volatile Buffer* dst = phase ? heatA : heatB;
+    for (int band = 0; band < 8; band++) {
+      int row = band * FIRE_BAND_ROWS;
+      volatile Buffer* base = src + (row + 1) * FIRE_ROW_CELLS;
+      volatile Buffer* leftPtr = base - 1;
+      volatile Buffer* centerPtr = base;
+      volatile Buffer* rightPtr = base + 1;
+      volatile Buffer* farPtr = base + FIRE_ROW_CELLS;
+      volatile Buffer* outPtr = dst + row * FIRE_ROW_CELLS;
+      @kernel fireStep config | exec {
+      }
+    }
+    {
+      volatile Buffer* statePtr = seedState;
+      volatile Buffer* envelopePtr = fireEnvelopes[envPhase];
+      volatile Buffer* rowPtr = dst + FIRE_ROWS * FIRE_ROW_CELLS;
+      @kernel fireSeed config | exec {
+      }
+    }
     fireDone = done;
+    phase ^= 1;
+    envPhase = (envPhase + 1) % 120;
   }
 }
 
@@ -172,13 +196,22 @@ int main() {
   fireGuInit();
   SceCtrlData ctl;
   u32 request = 1;
+  u32 shown = 0;
   int running = 1;
   fireRequest = request;
   while (running) {
-    sceDisplayWaitVblankStart();
     sceCtrlPeekBufferPositive(&ctl, 1);
     if (ctl.Buttons & PSP_CTRL_HOME) {
       running = 0;
+    }
+    if (shown != fireDone) {
+      shown = fireDone;
+      const volatile u32* ready = (shown & 1) ? heatB : heatA;
+      request += 1;
+      fireRequest = request;
+      firePaint(ready);
+    } else {
+      sceDisplayWaitVblankStart();
     }
   }
   sceGuTerm();
