@@ -1,3 +1,5 @@
 build/
 *PRIVATE.md
 /*.json
+*notes.txt
+tmp
