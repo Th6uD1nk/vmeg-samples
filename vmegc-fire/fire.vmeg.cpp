@@ -35,6 +35,37 @@ volatile Buffer fireEnvelopes[120][FIRE_ROW_CELLS];
 static u32 firePal[256] __attribute__((aligned(64)));
 
 static u32 __attribute__((aligned(16))) guList[256];
+
+static u32 fireColor(int r, int g, int b) { return 0xff000000 | ((u32)b << 16) | ((u32)g << 8) | (u32)r; }
+static void firePaletteInit(void) {
+  static const int stop[6] = { 0, 48, 112, 176, 224, 255 };
+  static const u32 color[6] = { 0xff000000, 0xff000050, 0xff0000ff, 0xff00a0ff, 0xff50ffff, 0xffffffff };
+  for (int i = 0; i < 256; i++) {
+    int s = 0;
+    while (s < 4 && i > stop[s + 1]) s += 1;
+    int span = stop[s + 1] - stop[s], t = span > 0 ? ((i - stop[s]) * 256) / span : 0;
+    u32 a = color[s], b = color[s + 1];
+    firePal[i] = fireColor((((a & 0xff) * (256 - t)) + ((b & 0xff) * t)) >> 8, ((((a >> 8) & 0xff) * (256 - t)) + (((b >> 8) & 0xff) * t)) >> 8, ((((a >> 16) & 0xff) * (256 - t)) + (((b >> 16) & 0xff) * t)) >> 8);
+  }
+}
+static void fireEnvelopeInit(void) {
+  for (int p = 0; p < 120; p++) {
+    int breath = 210 + ((p < 60 ? p : 120 - p) * 45) / 59;
+    for (int x = 0; x < FIRE_ROW_CELLS; x++) {
+      int d = x * 2 - (FIRE_ROW_CELLS - 1), ad = d < 0 ? -d : d;
+      int window = 255 - (ad * ad) / 48, tri = (ad + p / 2) % 22, depth = (ad * 255) / 110;
+      if (window < 0) window = 0;
+      if (depth > 255) depth = 255;
+      int jag = ((tri < 11 ? tri : 22 - tri) * 255) / 11, teeth = 255 - (jag * depth) / 255;
+      int v = (((window * breath) >> 8) * teeth) >> 8;
+      fireEnvelopes[p][x] = (u32)(v > 255 ? 255 : v);
+    }
+  }
+}
+static void fireFieldClear(void) {
+  for (int i = 0; i < FIRE_FIELD; i++) heatA[i] = heatB[i] = 0;
+  for (int i = 0; i < FIRE_ROW_CELLS; i++) seedState[i] = (u32)(i * 37 + 1) * 2654435761u;
+}
 static void fireGuInit(void) {
   sceGuInit();
   sceGuStart(GU_DIRECT, guList);
@@ -76,6 +107,10 @@ static void firePaint(const volatile u32* field) {
 
 int main() {
   scePowerSetClockFrequency(333, 333, 166);
+  fireFieldClear();
+  fireEnvelopeInit();
+  firePaletteInit();
+  sceKernelDcacheWritebackInvalidateAll();
   SceCtrlData ctl;
   int running = 1;
   while (running) {
