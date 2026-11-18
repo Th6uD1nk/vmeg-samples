@@ -105,6 +105,31 @@ static void firePaint(const volatile u32* field) {
   sceGuSwapBuffers();
 }
 
+.kernel fireStep pipeline {
+  Transfer leftIn = { memory: leftPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer centerIn = { memory: centerPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer rightIn = { memory: rightPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer farIn = { memory: farPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer outBand = { memory: outPtr, count: FIRE_BAND_CELLS - 1 };
+
+  .load { .transfer = leftIn; .scope = local; .offsets { .top0 = 0; } }
+  .load { .transfer = centerIn; .scope = local; .offsets { .top1 = 0; } }
+  .load { .transfer = rightIn; .scope = local; .offsets { .top2 = 0; } }
+  .load { .transfer = farIn; .scope = local; .offsets { .top3 = 0; } }
+
+  .flow {
+    .count = FIRE_BAND_CELLS - 1;
+    Slot low = top0 + top1;
+    Slot high = top2 + top3;
+    Slot total = low + high;
+    Slot mul61 = total * 61;
+    Slot shifted = mul61 >> 8;
+    .slot = clamp(shifted - 1, 0, 255);
+  }
+
+  .store { .transfer = outBand; .scope = local; }
+}
+
 void meLibOnProcess(void) {
   u32 done = 0;
   while (1) {
