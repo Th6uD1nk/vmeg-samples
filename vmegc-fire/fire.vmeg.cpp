@@ -23,6 +23,17 @@ ME_LIB_SETUP_SIMPLE_SUSPEND_HANDLER();
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT 272
 #define FRAME_STRIDE 512
+
+meLibSetSharedUncached32(10);
+#define fireRequest (meLibSharedMemory[1])
+#define fireDone (meLibSharedMemory[2])
+
+volatile Buffer heatA[FIRE_FIELD];
+volatile Buffer heatB[FIRE_FIELD];
+volatile Buffer seedState[FIRE_ROW_CELLS];
+volatile Buffer fireEnvelopes[120][FIRE_ROW_CELLS];
+static u32 firePal[256] __attribute__((aligned(64)));
+
 static u32 __attribute__((aligned(16))) guList[256];
 static void fireGuInit(void) {
   sceGuInit();
@@ -44,12 +55,12 @@ static void fireGuInit(void) {
   sceGuDisplay(GU_TRUE);
 }
 
-static void firePaint(const volatile u32* field, const u32* palette) {
+static void firePaint(const volatile u32* field) {
   sceGuStart(GU_DIRECT, guList);
   sceGuClearColor(0xff000000);
   sceGuClear(GU_COLOR_BUFFER_BIT);
   sceGuClutMode(GU_PSM_8888, 0, 0xff, 0);
-  sceGuClutLoad(32, palette);
+  sceGuClutLoad(32, firePal);
   sceGuTexMode(GU_PSM_T32, 0, 0, 0);
   sceGuTexImage(0, 128, FIRE_HEIGHT, 128, (const void*)field);
   typedef struct { u16 u, v; s16 x, y, z; } FireVertex;
