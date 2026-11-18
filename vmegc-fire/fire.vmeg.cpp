@@ -105,14 +105,28 @@ static void firePaint(const volatile u32* field) {
   sceGuSwapBuffers();
 }
 
+void meLibOnProcess(void) {
+  u32 done = 0;
+  while (1) {
+    while (fireRequest == done) {
+    }
+    done = fireRequest;
+    fireDone = done;
+  }
+}
+
 int main() {
   scePowerSetClockFrequency(333, 333, 166);
   fireFieldClear();
   fireEnvelopeInit();
   firePaletteInit();
   sceKernelDcacheWritebackInvalidateAll();
+  meLibDefaultInit();
+  fireGuInit();
   SceCtrlData ctl;
+  u32 request = 1;
   int running = 1;
+  fireRequest = request;
   while (running) {
     sceDisplayWaitVblankStart();
     sceCtrlPeekBufferPositive(&ctl, 1);
@@ -120,6 +134,7 @@ int main() {
       running = 0;
     }
   }
+  sceGuTerm();
   sceKernelExitGame();
   return 0;
 }
