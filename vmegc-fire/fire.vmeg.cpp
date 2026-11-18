@@ -130,6 +130,28 @@ static void firePaint(const volatile u32* field) {
   .store { .transfer = outBand; .scope = local; }
 }
 
+.kernel fireSeed extended {
+  Transfer stateIn = { memory: statePtr, count: FIRE_ROW_CELLS - 1 };
+  Transfer envelopeIn = { memory: envelopePtr, count: FIRE_ROW_CELLS - 1 };
+  Transfer stateOut = { memory: statePtr, count: FIRE_ROW_CELLS - 1 };
+  Transfer rowOut = { memory: rowPtr, count: FIRE_ROW_CELLS - 1 };
+  .load { .transfer = stateIn; .scope = local; .offsets { .top0 = 0; } }
+  .load { .transfer = envelopeIn; .scope = local; .offsets { .top4 = 0; } }
+  Agu lanes = { count: FIRE_ROW_CELLS - 1 };
+  Agu writeState = { count: FIRE_ROW_CELLS - 1, cyc: auto };
+  Agu writeHeat = { count: FIRE_ROW_CELLS - 1, cyc: auto };
+  Staging x1, a, x2, b, x3, c, x4, amp, prod;
+  .pe0 { .top = lanes; x1 = top0 << 7; a = top0 ^ x1; }
+  .pe1 { x2 = a >> 9; b = a ^ x2; }
+  .pe2 { x3 = b << 8; c = b ^ x3; }
+  .pe3 { x4 = c & 127; amp = x4 + 160; }
+  .pe4 { .top = { count: FIRE_ROW_CELLS - 1, cyc: auto }; prod = amp * top4; }
+  .pe5 { .write = writeState; .spad = c; }
+  .pe6 { .write = writeHeat; .spad = clamp(prod >> 8, 0, 255); }
+  .store { .transfer = stateOut; .scope = local; .offsets { .base5 = 0; } }
+  .store { .transfer = rowOut; .scope = local; .offsets { .base6 = 0; } }
+}
+
 void meLibOnProcess(void) {
   u32 done = 0;
   while (1) {
