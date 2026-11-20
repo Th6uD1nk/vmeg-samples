@@ -317,8 +317,8 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
   for (int i = 0; i < 12; i++) {
 
-    float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.80f, 1.25f, 10, 15);
-    float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.72f, 1.35f, 8, 15);
+    float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.88f, 1.14f, 36, 31);
+    float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.84f, 1.18f, 28, 31);
     drawFireQuad(fires[i].x, fires[i].z, fires[i].w * sx, fires[i].h * sy, -camAngle, fires[i].flip);
   }
 
