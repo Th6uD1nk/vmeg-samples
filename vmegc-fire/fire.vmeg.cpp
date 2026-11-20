@@ -104,6 +104,88 @@ static void fireGuInit(void) {
   sceGuDisplay(GU_TRUE);
 }
 
+typedef struct {
+  float u, v;
+  float x, y, z;
+} FireTexVert;
+
+typedef struct {
+  u32 color;
+  float x, y, z;
+} FloorVert;
+
+static void drawGround(void) {
+  sceGuDisable(GU_TEXTURE_2D);
+  sceGuEnable(GU_BLEND);
+  sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
+  sceGumMatrixMode(GU_MODEL);
+  sceGumLoadIdentity();
+  const int cells = 8;
+  const float size = 12.0f / (float)cells;
+  FloorVert* v = (FloorVert*)sceGuGetMemory(cells * cells * 6 * sizeof(FloorVert));
+  int idx = 0;
+  for (int gz = 0; gz < cells; gz++) {
+    float z0 = -6.0f + (float)gz * size;
+    float z1 = z0 + size;
+    for (int gx = 0; gx < cells; gx++) {
+      float x0 = -6.0f + (float)gx * size;
+      float x1 = x0 + size;
+      u32 col = ((gx ^ gz) & 1) ? 0x80101a2c : 0x801c2e4c;
+      v[idx++] = { col, x0, 0.0f, z0 };
+      v[idx++] = { col, x1, 0.0f, z0 };
+      v[idx++] = { col, x0, 0.0f, z1 };
+      v[idx++] = { col, x1, 0.0f, z0 };
+      v[idx++] = { col, x1, 0.0f, z1 };
+      v[idx++] = { col, x0, 0.0f, z1 };
+    }
+  }
+  sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D, cells * cells * 6, 0, v);
+}
+
+static void drawFireQuad(float x, float z, float w, float h, float yaw, int flipU) {
+  ScePspFVector3 pos = { x, 0.0f, z };
+  sceGumMatrixMode(GU_MODEL);
+  sceGumLoadIdentity();
+  sceGumTranslate(&pos);
+  sceGumRotateY(yaw);
+
+  float hw = w * 0.5f;
+  float u0 = flipU ? 1.0f : 0.0f;
+  float u1 = flipU ? 0.0f : 1.0f;
+  FireTexVert* v = (FireTexVert*)sceGuGetMemory(6 * sizeof(FireTexVert));
+  v[0] = { u0, 1.0f, -hw, 0.0f, 0.0f };
+  v[1] = { u1, 1.0f,  hw, 0.0f, 0.0f };
+  v[2] = { u0, 0.0f, -hw,   h,  0.0f };
+  v[3] = { u1, 1.0f,  hw, 0.0f, 0.0f };
+  v[4] = { u1, 0.0f,  hw,   h,  0.0f };
+  v[5] = { u0, 0.0f, -hw,   h,  0.0f };
+  sceGumDrawArray(GU_TRIANGLES, GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D, 6, 0, v);
+}
+
+static u32 nextClearColor(void) {
+  static u32 rng = 0x13579bdfu;
+  static int start = 256;
+  static int target = 256;
+  static int cur = 256;
+  static int step = 1;
+  static int span = 1;
+  if (step >= span) {
+    rng = rng * 1664525u + 1013904223u;
+    start = cur;
+    target = (int)((rng >> 16) & 0xffu);
+    if (target >= 128) target += 1;
+    rng = rng * 1664525u + 1013904223u;
+    span = 8 + (int)((rng >> 24) & 11u);
+    step = 0;
+  }
+  step += 1;
+  cur = start + ((target - start) * step) / span;
+  int r = 6 + ((60 - 6) * cur) / 256;
+  int g = 3 + ((26 - 3) * cur) / 256;
+  int b = 1 + ((8 - 1) * cur) / 256;
+  return 0xff000000u | ((u32)b << 16) | ((u32)g << 8) | (u32)r;
+}
+
 static void firePaint(const volatile u32* field) {
   sceGuStart(GU_DIRECT, guList);
   sceGuClearColor(0xff000000);
