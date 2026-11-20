@@ -233,6 +233,38 @@ static u32 nextClearColor(void) {
   return 0xff000000u | ((u32)b << 16) | ((u32)g << 8) | (u32)r;
 }
 
+typedef struct {
+
+  float start;
+  float target;
+  float cur;
+  int step;
+  int span;
+} FireScale;
+
+static float fireScaleStep(FireScale* s, u32* rng, float lo, float hi, int minSpan, int spanMask) {
+
+  if (s->span == 0) {
+
+    s->cur = 1.0f;
+  }
+  if (s->step >= s->span) {
+
+    *rng = *rng * 1664525u + 1013904223u;
+    float r = (float)((*rng >> 16) & 0xffu) / 255.0f;
+    s->start = s->cur;
+    s->target = lo + (hi - lo) * r;
+    *rng = *rng * 1664525u + 1013904223u;
+    s->span = minSpan + (int)((*rng >> 24) & (u32)spanMask);
+    s->step = 0;
+  }
+  s->step += 1;
+  float u = (float)s->step / (float)s->span;
+  float smooth = u * u * (3.0f - 2.0f * u);
+  s->cur = s->start + (s->target - s->start) * smooth;
+  return s->cur;
+}
+
 static void firePaint3D(const volatile u32* field, float camAngle) {
 
   static const struct {
@@ -253,6 +285,9 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     { -3.3f,  3.5f, 2.28f, 1.51f, 1 },
     {  3.4f,  3.4f, 1.70f, 2.62f, 0 },
   };
+  static FireScale scaleX[12];
+  static FireScale scaleY[12];
+  static u32 scaleRng = 0x2468ace1u;
 
   sceGuStart(GU_DIRECT, guList);
   sceGuClearColor(nextClearColor());
@@ -282,7 +317,9 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
   for (int i = 0; i < 12; i++) {
 
-    drawFireQuad(fires[i].x, fires[i].z, fires[i].w, fires[i].h, -camAngle, fires[i].flip);
+    float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.80f, 1.25f, 10, 15);
+    float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.72f, 1.35f, 8, 15);
+    drawFireQuad(fires[i].x, fires[i].z, fires[i].w * sx, fires[i].h * sy, -camAngle, fires[i].flip);
   }
 
   sceGuFinish();
