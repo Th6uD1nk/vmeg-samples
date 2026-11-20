@@ -16,11 +16,6 @@ ME_LIB_SETUP_SIMPLE_SUSPEND_HANDLER();
 #define FIRE_FIELD (FIRE_ROW_CELLS * (FIRE_HEIGHT + 2))
 #define FIRE_BAND_ROWS 8
 #define FIRE_BAND_CELLS (FIRE_ROW_CELLS * FIRE_BAND_ROWS)
-#define FIRE_SCALE 3
-#define FIRE_VIEW_W (FIRE_ROW_CELLS * FIRE_SCALE)
-#define FIRE_VIEW_H (FIRE_HEIGHT * FIRE_SCALE)
-#define FIRE_VIEW_X ((480 - FIRE_VIEW_W) / 2)
-#define FIRE_VIEW_Y ((272 - FIRE_VIEW_H) / 2)
 #define SCREEN_WIDTH 480
 #define SCREEN_HEIGHT 272
 #define FRAME_STRIDE 512
@@ -186,23 +181,54 @@ static u32 nextClearColor(void) {
   return 0xff000000u | ((u32)b << 16) | ((u32)g << 8) | (u32)r;
 }
 
-static void firePaint(const volatile u32* field) {
+static void firePaint3D(const volatile u32* field, float camAngle) {
+  static const struct { float x, z, w, h; int flip; } fires[12] = {
+    { -1.6f, -1.4f, 2.36f, 2.30f, 0 },
+    {  1.7f, -1.5f, 1.32f, 2.86f, 1 },
+    { -1.5f,  1.7f, 2.08f, 1.85f, 0 },
+    {  1.6f,  1.6f, 1.20f, 2.54f, 1 },
+    { -3.9f,  0.2f, 2.46f, 1.97f, 0 },
+    {  3.9f, -0.2f, 1.62f, 2.76f, 0 },
+    {  0.2f, -3.9f, 2.20f, 1.42f, 1 },
+    { -0.2f,  3.9f, 1.48f, 2.98f, 1 },
+    { -3.4f, -3.5f, 1.86f, 1.63f, 0 },
+    {  3.5f, -3.3f, 1.08f, 2.40f, 1 },
+    { -3.3f,  3.5f, 2.28f, 1.51f, 1 },
+    {  3.4f,  3.4f, 1.70f, 2.62f, 0 },
+  };
+
   sceGuStart(GU_DIRECT, guList);
-  sceGuClearColor(0xff000000);
+  sceGuClearColor(nextClearColor());
   sceGuClear(GU_COLOR_BUFFER_BIT);
+
+  sceGumMatrixMode(GU_PROJECTION);
+  sceGumLoadIdentity();
+  sceGumPerspective(52.0f, 480.0f / 272.0f, 0.3f, 40.0f);
+
+  sceGumMatrixMode(GU_VIEW);
+  sceGumLoadIdentity();
+  ScePspFVector3 viewPos = { 0.0f, -2.0f, -9.5f };
+  sceGumTranslate(&viewPos);
+  sceGumRotateX(0.22f);
+  sceGumRotateY(camAngle);
+
+  drawGround();
+
+  sceGuEnable(GU_TEXTURE_2D);
+  sceGuEnable(GU_BLEND);
+  sceGuBlendFunc(GU_ADD, GU_FIX, GU_FIX, 0xffffffff, 0xffffffff);
+  sceGuTexFilter(GU_LINEAR, GU_LINEAR);
   sceGuClutMode(GU_PSM_8888, 0, 0xff, 0);
   sceGuClutLoad(32, firePal);
   sceGuTexMode(GU_PSM_T32, 0, 0, 0);
   sceGuTexImage(0, 128, FIRE_HEIGHT, 128, (const void*)field);
-  typedef struct { u16 u, v; s16 x, y, z; } FireVertex;
-  FireVertex* v = (FireVertex*)sceGuGetMemory(2 * sizeof(FireVertex));
-  v[0].u = 0; v[0].v = 0; v[0].x = FIRE_VIEW_X; v[0].y = FIRE_VIEW_Y; v[0].z = 0;
-  v[1].u = FIRE_ROW_CELLS; v[1].v = FIRE_HEIGHT; v[1].x = FIRE_VIEW_X + FIRE_VIEW_W; v[1].y = FIRE_VIEW_Y + FIRE_VIEW_H; v[1].z = 0;
-  sceGuDrawArray(GU_SPRITES, GU_TEXTURE_16BIT | GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, v);
+
+  for (int i = 0; i < 12; i++) {
+    drawFireQuad(fires[i].x, fires[i].z, fires[i].w, fires[i].h, -camAngle, fires[i].flip);
+  }
+
   sceGuFinish();
   sceGuSync(0, 0);
-  sceDisplayWaitVblankStart();
-  sceGuSwapBuffers();
 }
 
 .kernel fireStep pipeline {
@@ -296,22 +322,24 @@ int main() {
   fireGuInit();
   SceCtrlData ctl;
   u32 request = 1;
-  u32 shown = 0;
   int running = 1;
+  float camAngle = 0.0f;
   fireRequest = request;
+  while (fireDone == 0) {
+  }
   while (running) {
     sceCtrlPeekBufferPositive(&ctl, 1);
     if (ctl.Buttons & PSP_CTRL_HOME) {
       running = 0;
     }
-    if (shown != fireDone) {
-      shown = fireDone;
-      const volatile u32* ready = (shown & 1) ? heatB : heatA;
+    const volatile u32* ready = (fireDone & 1) ? heatB : heatA;
+    camAngle += 0.0056f;
+    firePaint3D(ready, camAngle);
+    sceDisplayWaitVblankStart();
+    sceGuSwapBuffers();
+    if (fireDone == request) {
       request += 1;
       fireRequest = request;
-      firePaint(ready);
-    } else {
-      sceDisplayWaitVblankStart();
     }
   }
   sceGuTerm();
