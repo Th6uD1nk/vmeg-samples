@@ -37,7 +37,10 @@ static u32 firePal[256] __attribute__((aligned(64)));
 
 static u32 __attribute__((aligned(16))) guList[8192];
 
-static u32 fireColor(int r, int g, int b) { return 0xff000000 | ((u32)b << 16) | ((u32)g << 8) | (u32)r; }
+static u32 fireColor(int a, int r, int g, int b) {
+  return ((u32)a << 24) | ((u32)b << 16) | ((u32)g << 8) | (u32)r;
+}
+
 static void firePaletteInit(void) {
   static const int stop[6] = { 0, 48, 112, 176, 224, 255 };
   static const u32 color[6] = { 0xff000000, 0xff000050, 0xff0000ff, 0xff00a0ff, 0xff50ffff, 0xffffffff };
@@ -46,7 +49,13 @@ static void firePaletteInit(void) {
     while (s < 4 && i > stop[s + 1]) s += 1;
     int span = stop[s + 1] - stop[s], t = span > 0 ? ((i - stop[s]) * 256) / span : 0;
     u32 a = color[s], b = color[s + 1];
-    firePal[i] = fireColor((((a & 0xff) * (256 - t)) + ((b & 0xff) * t)) >> 8, ((((a >> 8) & 0xff) * (256 - t)) + (((b >> 8) & 0xff) * t)) >> 8, ((((a >> 16) & 0xff) * (256 - t)) + (((b >> 16) & 0xff) * t)) >> 8);
+    int alpha = i < 20 ? 0 : (i > 110 ? 255 : ((i - 20) * 255) / 90);
+    firePal[i] = fireColor(
+      alpha,
+      (((a & 0xff) * (256 - t)) + ((b & 0xff) * t)) >> 8,
+      ((((a >> 8) & 0xff) * (256 - t)) + (((b >> 8) & 0xff) * t)) >> 8,
+      ((((a >> 16) & 0xff) * (256 - t)) + (((b >> 16) & 0xff) * t)) >> 8
+    );
   }
 }
 static void fireEnvelopeInit(void) {
@@ -68,19 +77,27 @@ static void fireFieldClear(void) {
   for (int i = 0; i < FIRE_ROW_CELLS; i++) seedState[i] = (u32)(i * 37 + 1) * 2654435761u;
 }
 static void fireGuInit(void) {
+  u32 frameBytes = FRAME_STRIDE * SCREEN_HEIGHT * 4;
   sceGuInit();
   sceGuStart(GU_DIRECT, guList);
   sceGuDrawBuffer(GU_PSM_8888, (void*)0, FRAME_STRIDE);
-  sceGuDispBuffer(SCREEN_WIDTH, SCREEN_HEIGHT, (void*)(FRAME_STRIDE * SCREEN_HEIGHT * 4), FRAME_STRIDE);
+  sceGuDispBuffer(SCREEN_WIDTH, SCREEN_HEIGHT, (void*)frameBytes, FRAME_STRIDE);
+  sceGuDepthBuffer((void*)(frameBytes * 2), FRAME_STRIDE);
   sceGuOffset(2048 - SCREEN_WIDTH / 2, 2048 - SCREEN_HEIGHT / 2);
   sceGuViewport(2048, 2048, SCREEN_WIDTH, SCREEN_HEIGHT);
+  sceGuDepthRange(65535, 0);
   sceGuScissor(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   sceGuEnable(GU_SCISSOR_TEST);
   sceGuDisable(GU_DEPTH_TEST);
+  sceGuDisable(GU_CULL_FACE);
+  sceGuEnable(GU_CLIP_PLANES);
+  sceGuShadeModel(GU_SMOOTH);
   sceGuEnable(GU_TEXTURE_2D);
   sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
   sceGuTexFilter(GU_LINEAR, GU_LINEAR);
   sceGuTexWrap(GU_CLAMP, GU_CLAMP);
+  sceGuTexScale(1.0f, 1.0f);
+  sceGuTexOffset(0.0f, 0.0f);
   sceGuFinish();
   sceGuSync(0, 0);
   sceDisplayWaitVblankStart();
