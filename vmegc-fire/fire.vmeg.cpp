@@ -6,10 +6,14 @@
 #include <psppower.h>
 #include <me-core-mapper/me-core.h>
 #include <me-core-mapper/vme-fu-opcodes.h>
+
 PSP_MODULE_INFO("vme-fire", 0, 1, 1);
-PSP_HEAP_SIZE_KB(-1024);
 PSP_MAIN_THREAD_ATTR(PSP_THREAD_ATTR_VFPU | PSP_THREAD_ATTR_USER);
+
+PSP_HEAP_SIZE_KB(-1);
+PSP_HEAP_THRESHOLD_SIZE_KB(1024);
 ME_LIB_SETUP_SIMPLE_SUSPEND_HANDLER();
+
 #define FIRE_ROW_CELLS 128
 #define FIRE_HEIGHT 64
 #define FIRE_ROWS 63
@@ -33,17 +37,29 @@ static u32 firePal[256] __attribute__((aligned(64)));
 static u32 __attribute__((aligned(16))) guList[8192];
 
 static u32 fireColor(int a, int r, int g, int b) {
+
   return ((u32)a << 24) | ((u32)b << 16) | ((u32)g << 8) | (u32)r;
 }
 
 static void firePaletteInit(void) {
+
   static const int stop[6] = { 0, 48, 112, 176, 224, 255 };
-  static const u32 color[6] = { 0xff000000, 0xff000050, 0xff0000ff, 0xff00a0ff, 0xff50ffff, 0xffffffff };
+  static const u32 color[6] = {
+    0xff000000, 0xff000050, 0xff0000ff,
+    0xff00a0ff, 0xff50ffff, 0xffffffff
+  };
+  
   for (int i = 0; i < 256; i++) {
+
     int s = 0;
-    while (s < 4 && i > stop[s + 1]) s += 1;
-    int span = stop[s + 1] - stop[s], t = span > 0 ? ((i - stop[s]) * 256) / span : 0;
-    u32 a = color[s], b = color[s + 1];
+    while (s < 4 && i > stop[s + 1]) {
+
+      s += 1;
+    }
+    int span = stop[s + 1] - stop[s];
+    int t = span > 0 ? ((i - stop[s]) * 256) / span : 0;
+    u32 a = color[s];
+    u32 b = color[s + 1];
     int alpha = i < 20 ? 0 : (i > 110 ? 255 : ((i - 20) * 255) / 90);
     firePal[i] = fireColor(
       alpha,
@@ -53,25 +69,50 @@ static void firePaletteInit(void) {
     );
   }
 }
+
 static void fireEnvelopeInit(void) {
+
   for (int p = 0; p < 120; p++) {
+
     int breath = 210 + ((p < 60 ? p : 120 - p) * 45) / 59;
     for (int x = 0; x < FIRE_ROW_CELLS; x++) {
-      int d = x * 2 - (FIRE_ROW_CELLS - 1), ad = d < 0 ? -d : d;
-      int window = 255 - (ad * ad) / 48, tri = (ad + p / 2) % 22, depth = (ad * 255) / 110;
-      if (window < 0) window = 0;
-      if (depth > 255) depth = 255;
-      int jag = ((tri < 11 ? tri : 22 - tri) * 255) / 11, teeth = 255 - (jag * depth) / 255;
+
+      int d = x * 2 - (FIRE_ROW_CELLS - 1);
+      int ad = d < 0 ? -d : d;
+      int window = 255 - (ad * ad) / 48;
+      int tri = (ad + p / 2) % 22;
+      int depth = (ad * 255) / 110;
+      if (window < 0) {
+
+        window = 0;
+      }
+      if (depth > 255) {
+
+        depth = 255;
+      }
+      int jag = ((tri < 11 ? tri : 22 - tri) * 255) / 11;
+      int teeth = 255 - (jag * depth) / 255;
       int v = (((window * breath) >> 8) * teeth) >> 8;
       fireEnvelopes[p][x] = (u32)(v > 255 ? 255 : v);
     }
   }
 }
+
 static void fireFieldClear(void) {
-  for (int i = 0; i < FIRE_FIELD; i++) heatA[i] = heatB[i] = 0;
-  for (int i = 0; i < FIRE_ROW_CELLS; i++) seedState[i] = (u32)(i * 37 + 1) * 2654435761u;
+
+  for (int i = 0; i < FIRE_FIELD; i++) {
+
+    heatA[i] = 0;
+    heatB[i] = 0;
+  }
+  for (int i = 0; i < FIRE_ROW_CELLS; i++) {
+
+    seedState[i] = (u32)(i * 37 + 1) * 2654435761u;
+  }
 }
+
 static void fireGuInit(void) {
+
   u32 frameBytes = FRAME_STRIDE * SCREEN_HEIGHT * 4;
   sceGuInit();
   sceGuStart(GU_DIRECT, guList);
@@ -100,16 +141,19 @@ static void fireGuInit(void) {
 }
 
 typedef struct {
+
   float u, v;
   float x, y, z;
 } FireTexVert;
 
 typedef struct {
+
   u32 color;
   float x, y, z;
 } FloorVert;
 
 static void drawGround(void) {
+
   sceGuDisable(GU_TEXTURE_2D);
   sceGuEnable(GU_BLEND);
   sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
@@ -120,9 +164,11 @@ static void drawGround(void) {
   FloorVert* v = (FloorVert*)sceGuGetMemory(cells * cells * 6 * sizeof(FloorVert));
   int idx = 0;
   for (int gz = 0; gz < cells; gz++) {
+
     float z0 = -6.0f + (float)gz * size;
     float z1 = z0 + size;
     for (int gx = 0; gx < cells; gx++) {
+
       float x0 = -6.0f + (float)gx * size;
       float x1 = x0 + size;
       u32 col = ((gx ^ gz) & 1) ? 0x80101a2c : 0x801c2e4c;
@@ -138,6 +184,7 @@ static void drawGround(void) {
 }
 
 static void drawFireQuad(float x, float z, float w, float h, float yaw, int flipU) {
+
   ScePspFVector3 pos = { x, 0.0f, z };
   sceGumMatrixMode(GU_MODEL);
   sceGumLoadIdentity();
@@ -158,6 +205,7 @@ static void drawFireQuad(float x, float z, float w, float h, float yaw, int flip
 }
 
 static u32 nextClearColor(void) {
+
   static u32 rng = 0x13579bdfu;
   static int start = 256;
   static int target = 256;
@@ -165,10 +213,14 @@ static u32 nextClearColor(void) {
   static int step = 1;
   static int span = 1;
   if (step >= span) {
+
     rng = rng * 1664525u + 1013904223u;
     start = cur;
     target = (int)((rng >> 16) & 0xffu);
-    if (target >= 128) target += 1;
+    if (target >= 128) {
+
+      target += 1;
+    }
     rng = rng * 1664525u + 1013904223u;
     span = 8 + (int)((rng >> 24) & 11u);
     step = 0;
@@ -182,7 +234,12 @@ static u32 nextClearColor(void) {
 }
 
 static void firePaint3D(const volatile u32* field, float camAngle) {
-  static const struct { float x, z, w, h; int flip; } fires[12] = {
+
+  static const struct {
+
+    float x, z, w, h;
+    int flip;
+  } fires[12] = {
     { -1.6f, -1.4f, 2.36f, 2.30f, 0 },
     {  1.7f, -1.5f, 1.32f, 2.86f, 1 },
     { -1.5f,  1.7f, 2.08f, 1.85f, 0 },
@@ -224,6 +281,7 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   sceGuTexImage(0, 128, FIRE_HEIGHT, 128, (const void*)field);
 
   for (int i = 0; i < 12; i++) {
+
     drawFireQuad(fires[i].x, fires[i].z, fires[i].w, fires[i].h, -camAngle, fires[i].flip);
   }
 
@@ -232,18 +290,55 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 }
 
 .kernel fireStep pipeline {
+
   Transfer leftIn = { memory: leftPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer centerIn = { memory: centerPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer rightIn = { memory: rightPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer farIn = { memory: farPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer outBand = { memory: outPtr, count: FIRE_BAND_CELLS - 1 };
 
-  .load { .transfer = leftIn; .scope = local; .offsets { .top0 = 0; } }
-  .load { .transfer = centerIn; .scope = local; .offsets { .top1 = 0; } }
-  .load { .transfer = rightIn; .scope = local; .offsets { .top2 = 0; } }
-  .load { .transfer = farIn; .scope = local; .offsets { .top3 = 0; } }
+  .load {
+
+    .transfer = leftIn;
+    .scope = local;
+    .offsets {
+
+      .top0 = 0;
+    }
+  }
+
+  .load {
+
+    .transfer = centerIn;
+    .scope = local;
+    .offsets {
+
+      .top1 = 0;
+    }
+  }
+
+  .load {
+
+    .transfer = rightIn;
+    .scope = local;
+    .offsets {
+
+      .top2 = 0;
+    }
+  }
+
+  .load {
+
+    .transfer = farIn;
+    .scope = local;
+    .offsets {
+
+      .top3 = 0;
+    }
+  }
 
   .flow {
+
     .count = FIRE_BAND_CELLS - 1;
     Slot low = top0 + top1;
     Slot high = top2 + top3;
@@ -253,42 +348,123 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     .slot = clamp(shifted - 1, 0, 255);
   }
 
-  .store { .transfer = outBand; .scope = local; }
+  .store {
+
+    .transfer = outBand;
+    .scope = local;
+  }
 }
 
 .kernel fireSeed extended {
+
   Transfer stateIn = { memory: statePtr, count: FIRE_ROW_CELLS - 1 };
   Transfer envelopeIn = { memory: envelopePtr, count: FIRE_ROW_CELLS - 1 };
   Transfer stateOut = { memory: statePtr, count: FIRE_ROW_CELLS - 1 };
   Transfer rowOut = { memory: rowPtr, count: FIRE_ROW_CELLS - 1 };
-  .load { .transfer = stateIn; .scope = local; .offsets { .top0 = 0; } }
-  .load { .transfer = envelopeIn; .scope = local; .offsets { .top4 = 0; } }
+
+  .load {
+
+    .transfer = stateIn;
+    .scope = local;
+    .offsets {
+
+      .top0 = 0;
+    }
+  }
+
+  .load {
+
+    .transfer = envelopeIn;
+    .scope = local;
+    .offsets {
+
+      .top4 = 0;
+    }
+  }
+
   Agu lanes = { count: FIRE_ROW_CELLS - 1 };
   Agu writeState = { count: FIRE_ROW_CELLS - 1, cyc: auto };
   Agu writeHeat = { count: FIRE_ROW_CELLS - 1, cyc: auto };
   Staging x1, a, x2, b, x3, c, x4, amp, prod;
-  .pe0 { .top = lanes; x1 = top0 << 7; a = top0 ^ x1; }
-  .pe1 { x2 = a >> 9; b = a ^ x2; }
-  .pe2 { x3 = b << 8; c = b ^ x3; }
-  .pe3 { x4 = c & 127; amp = x4 + 160; }
-  .pe4 { .top = { count: FIRE_ROW_CELLS - 1, cyc: auto }; prod = amp * top4; }
-  .pe5 { .write = writeState; .spad = c; }
-  .pe6 { .write = writeHeat; .spad = clamp(prod >> 8, 0, 255); }
-  .store { .transfer = stateOut; .scope = local; .offsets { .base5 = 0; } }
-  .store { .transfer = rowOut; .scope = local; .offsets { .base6 = 0; } }
+
+  .pe0 {
+
+    .top = lanes;
+    x1 = top0 << 7;
+    a = top0 ^ x1;
+  }
+
+  .pe1 {
+
+    x2 = a >> 9;
+    b = a ^ x2;
+  }
+
+  .pe2 {
+
+    x3 = b << 8;
+    c = b ^ x3;
+  }
+
+  .pe3 {
+
+    x4 = c & 127;
+    amp = x4 + 160;
+  }
+
+  .pe4 {
+
+    .top = { count: FIRE_ROW_CELLS - 1, cyc: auto };
+    prod = amp * top4;
+  }
+
+  .pe5 {
+
+    .write = writeState;
+    .spad = c;
+  }
+
+  .pe6 {
+
+    .write = writeHeat;
+    .spad = clamp(prod >> 8, 0, 255);
+  }
+
+  .store {
+
+    .transfer = stateOut;
+    .scope = local;
+    .offsets {
+
+      .base5 = 0;
+    }
+  }
+
+  .store {
+
+    .transfer = rowOut;
+    .scope = local;
+    .offsets {
+
+      .base6 = 0;
+    }
+  }
 }
 
 void meLibOnProcess(void) {
+
   u32 done = 0;
   int phase = 0;
   int envPhase = 0;
   while (1) {
+
     while (fireRequest == done) {
     }
     done = fireRequest;
     volatile Buffer* src = phase ? heatB : heatA;
     volatile Buffer* dst = phase ? heatA : heatB;
     for (int band = 0; band < 8; band++) {
+
       int row = band * FIRE_BAND_ROWS;
       volatile Buffer* base = src + (row + 1) * FIRE_ROW_CELLS;
       volatile Buffer* leftPtr = base - 1;
@@ -313,6 +489,7 @@ void meLibOnProcess(void) {
 }
 
 int main() {
+
   scePowerSetClockFrequency(333, 333, 166);
   fireFieldClear();
   fireEnvelopeInit();
@@ -328,8 +505,10 @@ int main() {
   while (fireDone == 0) {
   }
   while (running) {
+
     sceCtrlPeekBufferPositive(&ctl, 1);
     if (ctl.Buttons & PSP_CTRL_HOME) {
+
       running = 0;
     }
     const volatile u32* ready = (fireDone & 1) ? heatB : heatA;
@@ -338,6 +517,7 @@ int main() {
     sceDisplayWaitVblankStart();
     sceGuSwapBuffers();
     if (fireDone == request) {
+
       request += 1;
       fireRequest = request;
     }
