@@ -19,7 +19,7 @@ target_compile_options(vme PRIVATE
 
 target_link_libraries(vme
   nl-me-core nl-me-core-lib nl-vme-lib
-  psppower pspge pspgu pspdisplay pspctrl pspdebug
+  psppower pspge pspgu pspgum pspvfpu pspdisplay pspctrl pspdebug
 )
 
 create_pbp_file(TARGET vme TITLE "VME Fire" BUILD_PRX)

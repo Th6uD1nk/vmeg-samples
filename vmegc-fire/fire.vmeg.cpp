@@ -1,6 +1,7 @@
 #include <pspctrl.h>
 #include <pspdisplay.h>
 #include <pspgu.h>
+#include <pspgum.h>
 #include <pspkernel.h>
 #include <psppower.h>
 #include <me-core-mapper/me-core.h>
@@ -12,7 +13,7 @@ ME_LIB_SETUP_SIMPLE_SUSPEND_HANDLER();
 #define FIRE_ROW_CELLS 128
 #define FIRE_HEIGHT 64
 #define FIRE_ROWS 63
-#define FIRE_FIELD (FIRE_ROW_CELLS * (FIRE_HEIGHT + 1))
+#define FIRE_FIELD (FIRE_ROW_CELLS * (FIRE_HEIGHT + 2))
 #define FIRE_BAND_ROWS 8
 #define FIRE_BAND_CELLS (FIRE_ROW_CELLS * FIRE_BAND_ROWS)
 #define FIRE_SCALE 3
@@ -24,7 +25,7 @@ ME_LIB_SETUP_SIMPLE_SUSPEND_HANDLER();
 #define SCREEN_HEIGHT 272
 #define FRAME_STRIDE 512
 
-meLibSetSharedUncached32(10);
+meLibSetSharedUncached32(16);
 #define fireRequest (meLibSharedMemory[1])
 #define fireDone (meLibSharedMemory[2])
 
@@ -34,7 +35,7 @@ volatile Buffer seedState[FIRE_ROW_CELLS];
 volatile Buffer fireEnvelopes[120][FIRE_ROW_CELLS];
 static u32 firePal[256] __attribute__((aligned(64)));
 
-static u32 __attribute__((aligned(16))) guList[256];
+static u32 __attribute__((aligned(16))) guList[8192];
 
 static u32 fireColor(int r, int g, int b) { return 0xff000000 | ((u32)b << 16) | ((u32)g << 8) | (u32)r; }
 static void firePaletteInit(void) {
