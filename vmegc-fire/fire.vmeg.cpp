@@ -297,26 +297,8 @@ static void fireRingInit(void) {
 
 static void firePaint3D(const volatile u32* field, float camAngle) {
 
-  static const struct {
-
-    float x, z, w, h;
-    int flip;
-  } fires[12] = {
-    {  0.12f, -0.18f, 2.80f, 3.60f, 0 },
-    { -0.82f,  0.58f, 2.55f, 3.20f, 1 },
-    {  0.88f,  0.46f, 2.65f, 3.40f, 0 },
-    { -2.00f, -0.48f, 2.35f, 2.45f, 1 },
-    {  2.05f, -0.70f, 2.15f, 2.20f, 0 },
-    { -0.42f, -2.00f, 2.25f, 2.55f, 1 },
-    {  0.35f,  2.05f, 2.10f, 2.10f, 0 },
-    {  1.60f,  1.45f, 2.30f, 2.35f, 1 },
-    { -2.85f,  1.25f, 1.70f, 1.45f, 0 },
-    { -2.20f, -2.35f, 1.50f, 1.15f, 1 },
-    {  2.85f, -1.85f, 1.75f, 1.55f, 1 },
-    {  1.15f, -2.95f, 1.55f, 1.25f, 0 },
-  };
-  static FireScale scaleX[12];
-  static FireScale scaleY[12];
+  static FireScale scaleX[FIRE_COUNT];
+  static FireScale scaleY[FIRE_COUNT];
   static u32 scaleRng = 0x2468ace1u;
 
   static FireScale hearth;
@@ -363,7 +345,7 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   float camZ = 12.05f * cosf(camAngle);
   if (rise > 0.001f) {
 
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < FIRE_COUNT; i++) {
 
       float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.88f, 1.14f, 36, 31);
       float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.84f, 1.18f, 28, 31);
