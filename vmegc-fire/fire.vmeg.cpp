@@ -488,18 +488,13 @@ int main() {
   fireGuInit();
   SceCtrlData ctl;
   u32 request = 1;
-  int running = 1;
   float camAngle = 0.0f;
   fireRequest = request;
   while (fireDone == 0) {
   }
-  while (running) {
+  do {
 
     sceCtrlPeekBufferPositive(&ctl, 1);
-    if (ctl.Buttons & PSP_CTRL_HOME) {
-
-      running = 0;
-    }
     const volatile u32* ready = (fireDone & 1) ? heatB : heatA;
     camAngle += 0.0056f;
     firePaint3D(ready, camAngle);
@@ -510,7 +505,7 @@ int main() {
       request += 1;
       fireRequest = request;
     }
-  }
+  } while (!(ctl.Buttons & PSP_CTRL_HOME));
   sceGuTerm();
   sceKernelExitGame();
   return 0;
