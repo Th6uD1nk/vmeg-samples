@@ -133,7 +133,7 @@ static void fireGuInit(void) {
   sceGuEnable(GU_CLIP_PLANES);
   sceGuShadeModel(GU_SMOOTH);
   sceGuEnable(GU_TEXTURE_2D);
-  sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
+  sceGuTexFunc(GU_TFX_MODULATE, GU_TCC_RGBA);
   sceGuTexFilter(GU_LINEAR, GU_LINEAR);
   sceGuTexWrap(GU_CLAMP, GU_CLAMP);
   sceGuTexScale(1.0f, 1.0f);
@@ -149,6 +149,7 @@ static void fireGuInit(void) {
 typedef struct {
 
   float u, v;
+  u32 color;
   float x, y, z;
 } FireTexVert;
 
@@ -177,7 +178,7 @@ static void drawGround(void) {
 
       float x0 = -6.0f + (float)gx * size;
       float x1 = x0 + size;
-      u32 col = ((gx ^ gz) & 1) ? 0x80101a2c : 0x801c2e4c;
+      u32 col = ((gx ^ gz) & 1) ? 0x60101a2c : 0x601c2e4c;
       v[idx++] = { col, x0, 0.0f, z0 };
       v[idx++] = { col, x1, 0.0f, z0 };
       v[idx++] = { col, x0, 0.0f, z1 };
@@ -194,16 +195,15 @@ static FireTexVert __attribute__((aligned(16))) firePatch[2][16];
 static void firePatchInit(void) {
 
   static const float frac[4] = { 0.0f, 1.0f / 3.0f, 2.0f / 3.0f, 1.0f };
-  static const float bulgeY[4] = { 0.55f, 1.0f, 0.85f, 0.25f };
+  static const float cylX[4] = { -0.5f, -0.5f, 0.5f, 0.5f };
+  static const float cylZ[4] = { -0.25f, 2.0f / 3.0f - 0.25f, 2.0f / 3.0f - 0.25f, -0.25f };
+  static const u32 rowCol[4] = { 0xff202020, 0xffffffff, 0xffffffff, 0xffffffff };
   for (int row = 0; row < 4; row++) {
 
     for (int col = 0; col < 4; col++) {
 
-      float px = -0.5f + frac[col];
-      float bx = (col == 1 || col == 2) ? 1.0f : 0.0f;
-      float pz = 0.45f * bx * bulgeY[row] - 0.1125f;
-      firePatch[0][row * 4 + col] = { frac[col], 1.0f - frac[row], px, frac[row], pz };
-      firePatch[1][row * 4 + col] = { 1.0f - frac[col], 1.0f - frac[row], px, frac[row], pz };
+      firePatch[0][row * 4 + col] = { frac[col], 1.0f - frac[row], rowCol[row], cylX[col], frac[row], cylZ[col] };
+      firePatch[1][row * 4 + col] = { 1.0f - frac[col], 1.0f - frac[row], rowCol[row], cylX[col], frac[row], cylZ[col] };
     }
   }
 }
@@ -217,7 +217,7 @@ static void drawFireQuad(float x, float z, float w, float h, float yaw, int flip
   sceGumTranslate(&pos);
   sceGumRotateY(yaw);
   sceGumScale(&sc);
-  sceGumDrawBezier(GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D, 4, 4, 0, firePatch[flipU]);
+  sceGumDrawBezier(GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D, 4, 4, 0, firePatch[flipU]);
 }
 
 typedef struct {
