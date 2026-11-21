@@ -191,34 +191,22 @@ static void drawFireQuad(float x, float z, float w, float h, float yaw, int flip
 
 typedef struct {
 
-  float start;
-  float target;
-  float cur;
-  int step;
-  int span;
+  float start, target;
+  int step, span;
 } FireScale;
 
 static float fireScaleStep(FireScale* s, u32* rng, float lo, float hi, int minSpan, int spanMask) {
 
-  if (s->span == 0) {
-
-    s->cur = 1.0f;
-  }
   if (s->step >= s->span) {
 
-    *rng = *rng * 1664525u + 1013904223u;
-    float r = (float)((*rng >> 16) & 0xffu) / 255.0f;
-    s->start = s->cur;
-    s->target = lo + (hi - lo) * r;
-    *rng = *rng * 1664525u + 1013904223u;
-    s->span = minSpan + (int)((*rng >> 24) & (u32)spanMask);
+    u32 v = *rng = *rng * 1664525u + 1013904223u;
+    s->start = s->span ? s->target : 1.0f;
+    s->target = lo + (hi - lo) * ((float)((v >> 16) & 0xffu) / 255.0f);
+    s->span = minSpan + (int)((v >> 24) & (u32)spanMask);
     s->step = 0;
   }
-  s->step += 1;
-  float u = (float)s->step / (float)s->span;
-  float smooth = u * u * (3.0f - 2.0f * u);
-  s->cur = s->start + (s->target - s->start) * smooth;
-  return s->cur;
+  float u = (float)(++s->step) / (float)s->span;
+  return s->start + (s->target - s->start) * u * u * (3.0f - 2.0f * u);
 }
 
 static u32 nextClearColor(void) {
