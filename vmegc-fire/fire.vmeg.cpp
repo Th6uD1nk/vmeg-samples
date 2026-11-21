@@ -490,8 +490,7 @@ int main() {
   u32 request = 1;
   float camAngle = 0.0f;
   fireRequest = request;
-  while (fireDone == 0) {
-  }
+
   do {
 
     sceCtrlPeekBufferPositive(&ctl, 1);
