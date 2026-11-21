@@ -240,12 +240,15 @@ static float fireScaleStep(FireScale* s, u32* rng, float lo, float hi, int minSp
   return s->start + (s->target - s->start) * u * u * (3.0f - 2.0f * u);
 }
 
-static u32 nextClearColor(void) {
+static u32 nextClearColor(float level) {
 
   static FireScale glow;
   static u32 rng = 0x13579bdfu;
   float t = fireScaleStep(&glow, &rng, 0.0f, 1.0f, 5, 7);
-  return fireColor(255, 14 + (int)(14.0f * t), 6 + (int)(6.0f * t), 2 + (int)(1.0f * t));
+  int r = 4 + (int)((10.0f + 14.0f * t) * level);
+  int g = 2 + (int)((4.0f + 6.0f * t) * level);
+  int b = 1 + (int)((1.0f + 1.0f * t) * level);
+  return fireColor(255, r, g, b);
 }
 
 static void firePaint3D(const volatile u32* field, float camAngle) {
@@ -272,8 +275,22 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   static FireScale scaleY[12];
   static u32 scaleRng = 0x2468ace1u;
 
+  static FireScale hearth;
+  static int ignite = 0;
+  float rise = fireScaleStep(&hearth, &scaleRng, 0.50f, 1.65f, 55, 95);
+  if (rise > 1.0f) {
+
+    rise = 1.0f;
+  }
+  if (ignite < 60) {
+
+    ignite += 1;
+    float u = (float)ignite / 60.0f;
+    rise *= u * u * (3.0f - 2.0f * u);
+  }
+
   sceGuStart(GU_DIRECT, guList);
-  sceGuClearColor(nextClearColor());
+  sceGuClearColor(nextClearColor(rise));
   sceGuClear(GU_COLOR_BUFFER_BIT);
 
   sceGumMatrixMode(GU_PROJECTION);
@@ -300,12 +317,16 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
   float camX = -12.05f * sinf(camAngle);
   float camZ = 12.05f * cosf(camAngle);
-  for (int i = 0; i < 12; i++) {
+  if (rise > 0.001f) {
 
-    float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.88f, 1.14f, 36, 31);
-    float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.84f, 1.18f, 28, 31);
-    float yaw = atan2f(camX - fires[i].x, camZ - fires[i].z);
-    drawFireQuad(fires[i].x, fires[i].z, fires[i].w * sx, fires[i].h * sy, yaw, fires[i].flip);
+    for (int i = 0; i < 12; i++) {
+
+      float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.88f, 1.14f, 36, 31);
+      float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.84f, 1.18f, 28, 31);
+      float yaw = atan2f(camX - fires[i].x, camZ - fires[i].z);
+      float rw = 0.4f + 0.6f * rise;
+      drawFireQuad(fires[i].x, fires[i].z, fires[i].w * sx * rw, fires[i].h * sy * rise, yaw, fires[i].flip);
+    }
   }
 
   sceGuFinish();
