@@ -61,9 +61,9 @@ static void firePaletteInit(void) {
 
     firePal[i] = fireColor(
       fireRamp(i, 20, 110),
-      (fireRamp(i, 0, 112) * 200) >> 8,
-      (fireRamp(i, 136, 250) * 165) >> 8,
-      (fireRamp(i, 200, 255) * 60) >> 8
+      (fireRamp(i, 0, 112) * 205) >> 8,
+      (fireRamp(i, 116, 218) * 185) >> 8,
+      (fireRamp(i, 210, 255) * 55) >> 8
     );
   }
 }
@@ -76,7 +76,7 @@ static void fireEnvelopeInit(void) {
     for (int x = 0; x < FIRE_ROW_CELLS / 2; x++) {
 
       int ad = (FIRE_ROW_CELLS - 1) - x * 2;
-      int window = clamp255(255 - ad * 2 - (ad * ad) / 140);
+      int window = clamp255(255 - (ad * 5) / 2 - (ad * ad) / 100);
       int tri = (ad + p / 2) % 22;
       int jag = fireRamp(tri < 11 ? tri : 22 - tri, 0, 11);
       int teeth = 255 - (jag * fireRamp(ad, 0, 110)) / 255;
@@ -197,7 +197,7 @@ static void firePatchInit(void) {
   static const float frac[4] = { 0.0f, 1.0f / 3.0f, 2.0f / 3.0f, 1.0f };
   static const float cylX[4] = { -0.5f, -0.5f, 0.5f, 0.5f };
   static const float cylZ[4] = { -0.25f, 2.0f / 3.0f - 0.25f, 2.0f / 3.0f - 0.25f, -0.25f };
-  static const u32 rowCol[4] = { 0xff202020, 0xffffffff, 0xffffffff, 0xffffffff };
+  static const u32 rowCol[4] = { 0xff0d0d0d, 0xffffffff, 0xffffffff, 0xffffffff };
   for (int row = 0; row < 4; row++) {
 
     for (int col = 0; col < 4; col++) {
@@ -211,7 +211,7 @@ static void firePatchInit(void) {
 static void drawFireQuad(float x, float z, float w, float h, float yaw, int flipU) {
 
   ScePspFVector3 pos = { x, 0.0f, z };
-  ScePspFVector3 sc = { w, h, w };
+  ScePspFVector3 sc = { w * 1.12f, h, w * 1.12f };
   sceGumMatrixMode(GU_MODEL);
   sceGumLoadIdentity();
   sceGumTranslate(&pos);
@@ -255,18 +255,18 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     float x, z, w, h;
     int flip;
   } fires[12] = {
-    {  0.12f, -0.18f, 2.45f, 3.60f, 0 },
-    { -0.82f,  0.58f, 2.20f, 3.20f, 1 },
-    {  0.88f,  0.46f, 2.30f, 3.40f, 0 },
-    { -2.00f, -0.48f, 2.05f, 2.45f, 1 },
-    {  2.05f, -0.70f, 1.85f, 2.20f, 0 },
-    { -0.42f, -2.00f, 1.95f, 2.55f, 1 },
-    {  0.35f,  2.05f, 1.80f, 2.10f, 0 },
-    {  1.60f,  1.45f, 2.00f, 2.35f, 1 },
-    { -2.85f,  1.25f, 1.45f, 1.45f, 0 },
-    { -2.20f, -2.35f, 1.30f, 1.15f, 1 },
-    {  2.85f, -1.85f, 1.50f, 1.55f, 1 },
-    {  1.15f, -2.95f, 1.35f, 1.25f, 0 },
+    {  0.12f, -0.18f, 2.80f, 3.60f, 0 },
+    { -0.82f,  0.58f, 2.55f, 3.20f, 1 },
+    {  0.88f,  0.46f, 2.65f, 3.40f, 0 },
+    { -2.00f, -0.48f, 2.35f, 2.45f, 1 },
+    {  2.05f, -0.70f, 2.15f, 2.20f, 0 },
+    { -0.42f, -2.00f, 2.25f, 2.55f, 1 },
+    {  0.35f,  2.05f, 2.10f, 2.10f, 0 },
+    {  1.60f,  1.45f, 2.30f, 2.35f, 1 },
+    { -2.85f,  1.25f, 1.70f, 1.45f, 0 },
+    { -2.20f, -2.35f, 1.50f, 1.15f, 1 },
+    {  2.85f, -1.85f, 1.75f, 1.55f, 1 },
+    {  1.15f, -2.95f, 1.55f, 1.25f, 0 },
   };
   static FireScale scaleX[12];
   static FireScale scaleY[12];
