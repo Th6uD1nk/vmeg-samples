@@ -30,6 +30,9 @@ meLibSetSharedUncached32(16);
 
 volatile Buffer heatA[FIRE_FIELD];
 volatile Buffer heatB[FIRE_FIELD];
+volatile Buffer("Q16.8") waveX[FIRE_FIELD];
+volatile Buffer("Q16.8") waveY[FIRE_FIELD];
+volatile Buffer waveSway[FIRE_FIELD];
 volatile Buffer seedState[FIRE_ROW_CELLS];
 volatile Buffer fireEnvelopes[120][FIRE_ROW_CELLS];
 static u32 firePal[256] __attribute__((aligned(64)));
@@ -89,6 +92,21 @@ static void fireFieldClear(void) {
 
     heatA[i] = 0;
     heatB[i] = 0;
+  }
+  int wx = 150;
+  int wy = 0;
+  for (int y = 0; y < FIRE_HEIGHT; y++) {
+
+    int amp = y > 48 ? (64 - y) : 16;
+    int sx = (wx * amp) >> 4;
+    int sy = (wy * amp) >> 4;
+    for (int x = 0; x < FIRE_ROW_CELLS; x++) {
+
+      waveX[y * FIRE_ROW_CELLS + x] = (u32)sx;
+      waveY[y * FIRE_ROW_CELLS + x] = (u32)sy;
+    }
+    wx += wy >> 2;
+    wy -= wx >> 2;
   }
   for (int i = 0; i < FIRE_ROW_CELLS; i++) {
 
