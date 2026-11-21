@@ -1,3 +1,4 @@
+#include <math.h>
 #include <pspctrl.h>
 #include <pspdisplay.h>
 #include <pspgu.h>
@@ -137,6 +138,8 @@ static void fireGuInit(void) {
   sceGuTexWrap(GU_CLAMP, GU_CLAMP);
   sceGuTexScale(1.0f, 1.0f);
   sceGuTexOffset(0.0f, 0.0f);
+  sceGuPatchDivide(8, 8);
+  sceGuPatchPrim(GU_TRIANGLE_STRIP);
   sceGuFinish();
   sceGuSync(0, 0);
   sceDisplayWaitVblankStart();
@@ -186,25 +189,35 @@ static void drawGround(void) {
   sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D, cells * cells * 6, 0, v);
 }
 
+static FireTexVert __attribute__((aligned(16))) firePatch[2][16];
+
+static void firePatchInit(void) {
+
+  static const float frac[4] = { 0.0f, 1.0f / 3.0f, 2.0f / 3.0f, 1.0f };
+  static const float bulgeY[4] = { 0.55f, 1.0f, 0.85f, 0.25f };
+  for (int row = 0; row < 4; row++) {
+
+    for (int col = 0; col < 4; col++) {
+
+      float px = -0.5f + frac[col];
+      float bx = (col == 1 || col == 2) ? 1.0f : 0.0f;
+      float pz = 0.45f * bx * bulgeY[row] - 0.1125f;
+      firePatch[0][row * 4 + col] = { frac[col], 1.0f - frac[row], px, frac[row], pz };
+      firePatch[1][row * 4 + col] = { 1.0f - frac[col], 1.0f - frac[row], px, frac[row], pz };
+    }
+  }
+}
+
 static void drawFireQuad(float x, float z, float w, float h, float yaw, int flipU) {
 
   ScePspFVector3 pos = { x, 0.0f, z };
+  ScePspFVector3 sc = { w, h, w };
   sceGumMatrixMode(GU_MODEL);
   sceGumLoadIdentity();
   sceGumTranslate(&pos);
   sceGumRotateY(yaw);
-
-  float hw = w * 0.5f;
-  float u0 = flipU ? 1.0f : 0.0f;
-  float u1 = flipU ? 0.0f : 1.0f;
-  FireTexVert* v = (FireTexVert*)sceGuGetMemory(6 * sizeof(FireTexVert));
-  v[0] = { u0, 1.0f, -hw, 0.0f, 0.0f };
-  v[1] = { u1, 1.0f,  hw, 0.0f, 0.0f };
-  v[2] = { u0, 0.0f, -hw,   h,  0.0f };
-  v[3] = { u1, 1.0f,  hw, 0.0f, 0.0f };
-  v[4] = { u1, 0.0f,  hw,   h,  0.0f };
-  v[5] = { u0, 0.0f, -hw,   h,  0.0f };
-  sceGumDrawArray(GU_TRIANGLES, GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D, 6, 0, v);
+  sceGumScale(&sc);
+  sceGumDrawBezier(GU_TEXTURE_32BITF | GU_VERTEX_32BITF | GU_TRANSFORM_3D, 4, 4, 0, firePatch[flipU]);
 }
 
 typedef struct {
@@ -285,11 +298,14 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   sceGuTexMode(GU_PSM_T32, 0, 0, 0);
   sceGuTexImage(0, 128, FIRE_HEIGHT, 128, (const void*)field);
 
+  float camX = -8.84f * sinf(camAngle);
+  float camZ = 8.84f * cosf(camAngle);
   for (int i = 0; i < 12; i++) {
 
     float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.88f, 1.14f, 36, 31);
     float sy = fireScaleStep(&scaleY[i], &scaleRng, 0.84f, 1.18f, 28, 31);
-    drawFireQuad(fires[i].x, fires[i].z, fires[i].w * sx, fires[i].h * sy, -camAngle, fires[i].flip);
+    float yaw = atan2f(camX - fires[i].x, camZ - fires[i].z);
+    drawFireQuad(fires[i].x, fires[i].z, fires[i].w * sx, fires[i].h * sy, yaw, fires[i].flip);
   }
 
   sceGuFinish();
@@ -669,6 +685,7 @@ int main() {
   fireFieldClear();
   fireEnvelopeInit();
   firePaletteInit();
+  firePatchInit();
   sceKernelDcacheWritebackInvalidateAll();
   meLibDefaultInit();
   fireGuInit();
