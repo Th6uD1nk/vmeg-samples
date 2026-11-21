@@ -77,7 +77,7 @@ static void fireEnvelopeInit(void) {
 
       int ad = (FIRE_ROW_CELLS - 1) - x * 2;
       int window = clamp255(255 - (ad * 5) / 2 - (ad * ad) / 100);
-      int tri = (ad + p / 2) % 22;
+      int tri = (ad + p / 5) % 22;
       int jag = fireRamp(tri < 11 ? tri : 22 - tri, 0, 11);
       int teeth = 255 - (jag * fireRamp(ad, 0, 110)) / 255;
       u32 v = (u32)((((window * breath) >> 8) * teeth) >> 8);
@@ -94,7 +94,7 @@ static void fireFieldClear(void) {
     heatA[i] = 0;
     heatB[i] = 0;
   }
-  int wx = 185;
+  int wx = 740;
   int wy = 0;
   for (int y = 0; y < FIRE_HEIGHT; y++) {
 
@@ -106,8 +106,8 @@ static void fireFieldClear(void) {
       waveX[y * FIRE_ROW_CELLS + x] = (u32)sx;
       waveY[y * FIRE_ROW_CELLS + x] = (u32)sy;
     }
-    wx += wy >> 4;
-    wy -= wx >> 4;
+    wx += wy >> 5;
+    wy -= wx >> 5;
   }
   for (int i = 0; i < FIRE_ROW_CELLS; i++) {
 
@@ -356,7 +356,7 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
     .top = lanes;
     y0 = top1;
-    nx = x0 + (y0 >> 4);
+    nx = x0 + (y0 >> 3);
   }
 
   .pe2 {
@@ -368,13 +368,13 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   .pe4 {
 
     .write = writeY;
-    .spad = y1 - (nx >> 4);
+    .spad = y1 - (nx >> 3);
   }
 
   .pe5 {
 
     .write = writeS;
-    .spad = nx >> 6;
+    .spad = nx >> 8;
   }
 
   .store {
@@ -691,6 +691,7 @@ int main() {
   fireGuInit();
   SceCtrlData ctl;
   u32 request = 1;
+  u32 frame = 0;
   float camAngle = 0.0f;
   fireRequest = request;
 
@@ -702,7 +703,8 @@ int main() {
     firePaint3D(ready, camAngle);
     sceDisplayWaitVblankStart();
     sceGuSwapBuffers();
-    if (fireDone == request) {
+    frame += 1;
+    if ((frame & 1) && fireDone == request) {
 
       request += 1;
       fireRequest = request;
