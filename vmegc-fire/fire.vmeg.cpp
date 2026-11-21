@@ -159,16 +159,12 @@ typedef struct {
   float x, y, z;
 } FloorVert;
 
-static void drawGround(void) {
+static FloorVert __attribute__((aligned(16))) floorVerts[384];
 
-  sceGuDisable(GU_TEXTURE_2D);
-  sceGuEnable(GU_BLEND);
-  sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
-  sceGumMatrixMode(GU_MODEL);
-  sceGumLoadIdentity();
+static void fireGroundInit(void) {
+
   const int cells = 8;
   const float size = 12.0f / (float)cells;
-  FloorVert* v = (FloorVert*)sceGuGetMemory(cells * cells * 6 * sizeof(FloorVert));
   int idx = 0;
   for (int gz = 0; gz < cells; gz++) {
 
@@ -179,15 +175,24 @@ static void drawGround(void) {
       float x0 = -6.0f + (float)gx * size;
       float x1 = x0 + size;
       u32 col = ((gx ^ gz) & 1) ? 0x60101a2c : 0x601c2e4c;
-      v[idx++] = { col, x0, 0.0f, z0 };
-      v[idx++] = { col, x1, 0.0f, z0 };
-      v[idx++] = { col, x0, 0.0f, z1 };
-      v[idx++] = { col, x1, 0.0f, z0 };
-      v[idx++] = { col, x1, 0.0f, z1 };
-      v[idx++] = { col, x0, 0.0f, z1 };
+      floorVerts[idx++] = { col, x0, 0.0f, z0 };
+      floorVerts[idx++] = { col, x1, 0.0f, z0 };
+      floorVerts[idx++] = { col, x0, 0.0f, z1 };
+      floorVerts[idx++] = { col, x1, 0.0f, z0 };
+      floorVerts[idx++] = { col, x1, 0.0f, z1 };
+      floorVerts[idx++] = { col, x0, 0.0f, z1 };
     }
   }
-  sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D, cells * cells * 6, 0, v);
+}
+
+static void drawGround(void) {
+
+  sceGuDisable(GU_TEXTURE_2D);
+  sceGuEnable(GU_BLEND);
+  sceGuBlendFunc(GU_ADD, GU_SRC_ALPHA, GU_ONE_MINUS_SRC_ALPHA, 0, 0);
+  sceGumMatrixMode(GU_MODEL);
+  sceGumLoadIdentity();
+  sceGumDrawArray(GU_TRIANGLES, GU_COLOR_8888 | GU_VERTEX_32BITF | GU_TRANSFORM_3D, 384, 0, floorVerts);
 }
 
 static FireTexVert __attribute__((aligned(16))) firePatch[2][16];
@@ -706,6 +711,7 @@ int main() {
   fireFieldClear();
   fireEnvelopeInit();
   firePaletteInit();
+  fireGroundInit();
   firePatchInit();
   sceKernelDcacheWritebackInvalidateAll();
   meLibDefaultInit();
