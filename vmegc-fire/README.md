@@ -16,5 +16,12 @@ Real-time procedural fire simulation processed by the VME2 hosted by PSP Media E
 
 ```bash
 cmake -B build -S .
-cmake --build build -j4
+cmake --build build
+```
+
+For PSP Fat (1000) opcode compatibility:
+
+```bash
+cmake -B build -S . -DVMEGC_COMPAT=fat
+cmake --build build
 ```
