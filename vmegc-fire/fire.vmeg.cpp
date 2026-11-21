@@ -255,18 +255,18 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     float x, z, w, h;
     int flip;
   } fires[12] = {
-    {  0.08f, -0.12f, 2.45f, 3.60f, 0 },
-    { -0.58f,  0.42f, 2.20f, 3.20f, 1 },
-    {  0.62f,  0.32f, 2.30f, 3.40f, 0 },
-    { -1.45f, -0.35f, 2.05f, 2.45f, 1 },
-    {  1.50f, -0.50f, 1.85f, 2.20f, 0 },
-    { -0.30f, -1.45f, 1.95f, 2.55f, 1 },
-    {  0.25f,  1.50f, 1.80f, 2.10f, 0 },
-    {  1.15f,  1.05f, 2.00f, 2.35f, 1 },
-    { -2.05f,  0.90f, 1.45f, 1.45f, 0 },
-    { -1.60f, -1.70f, 1.30f, 1.15f, 1 },
-    {  2.05f, -1.35f, 1.50f, 1.55f, 1 },
-    {  0.85f, -2.15f, 1.35f, 1.25f, 0 },
+    {  0.12f, -0.18f, 2.45f, 3.60f, 0 },
+    { -0.82f,  0.58f, 2.20f, 3.20f, 1 },
+    {  0.88f,  0.46f, 2.30f, 3.40f, 0 },
+    { -2.00f, -0.48f, 2.05f, 2.45f, 1 },
+    {  2.05f, -0.70f, 1.85f, 2.20f, 0 },
+    { -0.42f, -2.00f, 1.95f, 2.55f, 1 },
+    {  0.35f,  2.05f, 1.80f, 2.10f, 0 },
+    {  1.60f,  1.45f, 2.00f, 2.35f, 1 },
+    { -2.85f,  1.25f, 1.45f, 1.45f, 0 },
+    { -2.20f, -2.35f, 1.30f, 1.15f, 1 },
+    {  2.85f, -1.85f, 1.50f, 1.55f, 1 },
+    {  1.15f, -2.95f, 1.35f, 1.25f, 0 },
   };
   static FireScale scaleX[12];
   static FireScale scaleY[12];
@@ -278,13 +278,13 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
   sceGumMatrixMode(GU_PROJECTION);
   sceGumLoadIdentity();
-  sceGumPerspective(52.0f, 480.0f / 272.0f, 0.3f, 40.0f);
+  sceGumPerspective(48.0f, 480.0f / 272.0f, 0.3f, 40.0f);
 
   sceGumMatrixMode(GU_VIEW);
   sceGumLoadIdentity();
-  ScePspFVector3 viewPos = { 0.0f, -2.0f, -9.5f };
+  ScePspFVector3 viewPos = { 0.0f, -1.85f, -12.5f };
   sceGumTranslate(&viewPos);
-  sceGumRotateX(0.22f);
+  sceGumRotateX(0.16f);
   sceGumRotateY(camAngle);
 
   drawGround();
@@ -298,8 +298,8 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   sceGuTexMode(GU_PSM_T32, 0, 0, 0);
   sceGuTexImage(0, 128, FIRE_HEIGHT, 128, (const void*)field);
 
-  float camX = -8.84f * sinf(camAngle);
-  float camZ = 8.84f * cosf(camAngle);
+  float camX = -12.05f * sinf(camAngle);
+  float camZ = 12.05f * cosf(camAngle);
   for (int i = 0; i < 12; i++) {
 
     float sx = fireScaleStep(&scaleX[i], &scaleRng, 0.88f, 1.14f, 36, 31);
@@ -698,7 +698,7 @@ int main() {
 
     sceCtrlPeekBufferPositive(&ctl, 1);
     const volatile u32* ready = (fireDone & 1) ? heatB : heatA;
-    camAngle += 0.0056f;
+    camAngle += 0.0036f;
     firePaint3D(ready, camAngle);
     sceDisplayWaitVblankStart();
     sceGuSwapBuffers();
