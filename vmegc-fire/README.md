@@ -4,9 +4,9 @@ Real-time procedural fire simulation processed by the VME2 hosted by PSP Media E
 
 ## How it works
 
-1. **`fireStep` (`pipeline` kernel)**: propagates heat upward across 8 bands of `8 x 128` cells (`1024` words per band) with 4-neighbor averaging and cooling (`clamp((total * 61 >> 8) - 1, 0, 255)`).
-2. **`fireSeed` (`extended` kernel)**: updates the bottom-row xorshift PRNG (`seedState`) and multiplies by the precomputed centered flame envelope (`fireEnvelopes[envPhase]`).
-3. **GE display (`firePaint3D`)**: binds the VME output buffer directly as a `128 x 64` `GU_PSM_T32` texture with a 256-entry RGBA8888 CLUT (`firePal`) to draw 3D fire billboards over an orbiting checkerboard floor.
+1. **`fireWave` (`extended` kernel)**: rotates a `Buffer("Q16.8")` harmonic oscillator per band (`8 x 128` cells) and outputs the height-scaled horizontal sway factor (`waveSway`).
+2. **`fireStep` (`extended` kernel)**: propagates heat upward across 8 bands of `1024` words with 4-neighbor averaging, lateral advection via `mulclp` from `waveSway`, `(adv * 62) >> 8` cooling, and conditional core pinching (`(cooled & 128) ? cooled + 3 : cooled - 3`).
+3. **`fireSeed` (`extended` kernel)**: updates the bottom-row xorshift PRNG (`seedState`) and multiplies by a smoothed dual-offset read (`.top4 = 0`, `.top7 = 2`) of the precomputed flame envelope (`fireEnvelopes[envPhase]`).
 
 ## Controls
 
