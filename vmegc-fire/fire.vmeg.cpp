@@ -61,9 +61,9 @@ static void firePaletteInit(void) {
 
     firePal[i] = fireColor(
       fireRamp(i, 20, 110),
-      fireRamp(i, 0, 112),
-      fireRamp(i, 128, 240),
-      fireRamp(i, 176, 255)
+      (fireRamp(i, 0, 112) * 200) >> 8,
+      (fireRamp(i, 136, 250) * 140) >> 8,
+      (fireRamp(i, 200, 255) * 60) >> 8
     );
   }
 }
@@ -244,8 +244,8 @@ static u32 nextClearColor(void) {
 
   static FireScale glow;
   static u32 rng = 0x13579bdfu;
-  float t = fireScaleStep(&glow, &rng, 0.0f, 1.0f, 8, 11);
-  return fireColor(255, 6 + (int)(54.0f * t), 3 + (int)(23.0f * t), 1 + (int)(7.0f * t));
+  float t = fireScaleStep(&glow, &rng, 0.0f, 1.0f, 12, 15);
+  return fireColor(255, 18 + (int)(26.0f * t), 8 + (int)(11.0f * t), 2 + (int)(3.0f * t));
 }
 
 static void firePaint3D(const volatile u32* field, float camAngle) {
@@ -255,18 +255,18 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     float x, z, w, h;
     int flip;
   } fires[12] = {
-    { -1.6f, -1.4f, 2.36f, 2.30f, 0 },
-    {  1.7f, -1.5f, 1.32f, 2.86f, 1 },
-    { -1.5f,  1.7f, 2.08f, 1.85f, 0 },
-    {  1.6f,  1.6f, 1.20f, 2.54f, 1 },
-    { -3.9f,  0.2f, 2.46f, 1.97f, 0 },
-    {  3.9f, -0.2f, 1.62f, 2.76f, 0 },
-    {  0.2f, -3.9f, 2.20f, 1.42f, 1 },
-    { -0.2f,  3.9f, 1.48f, 2.98f, 1 },
-    { -3.4f, -3.5f, 1.86f, 1.63f, 0 },
-    {  3.5f, -3.3f, 1.08f, 2.40f, 1 },
-    { -3.3f,  3.5f, 2.28f, 1.51f, 1 },
-    {  3.4f,  3.4f, 1.70f, 2.62f, 0 },
+    {  0.08f, -0.12f, 2.45f, 3.60f, 0 },
+    { -0.58f,  0.42f, 2.20f, 3.20f, 1 },
+    {  0.62f,  0.32f, 2.30f, 3.40f, 0 },
+    { -1.45f, -0.35f, 2.05f, 2.45f, 1 },
+    {  1.50f, -0.50f, 1.85f, 2.20f, 0 },
+    { -0.30f, -1.45f, 1.95f, 2.55f, 1 },
+    {  0.25f,  1.50f, 1.80f, 2.10f, 0 },
+    {  1.15f,  1.05f, 2.00f, 2.35f, 1 },
+    { -2.05f,  0.90f, 1.45f, 1.45f, 0 },
+    { -1.60f, -1.70f, 1.30f, 1.15f, 1 },
+    {  2.05f, -1.35f, 1.50f, 1.55f, 1 },
+    {  0.85f, -2.15f, 1.35f, 1.25f, 0 },
   };
   static FireScale scaleX[12];
   static FireScale scaleY[12];
