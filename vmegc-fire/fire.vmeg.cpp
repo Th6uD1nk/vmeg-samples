@@ -61,9 +61,9 @@ static void firePaletteInit(void) {
 
     firePal[i] = fireColor(
       fireRamp(i, 20, 110),
-      (fireRamp(i, 0, 112) * 205) >> 8,
-      (fireRamp(i, 116, 218) * 185) >> 8,
-      (fireRamp(i, 210, 255) * 55) >> 8
+      (fireRamp(i, 0, 108) * 245) >> 8,
+      (fireRamp(i, 112, 214) * 220) >> 8,
+      (fireRamp(i, 205, 255) * 95) >> 8
     );
   }
 }
@@ -688,9 +688,15 @@ int main() {
   firePatchInit();
   sceKernelDcacheWritebackInvalidateAll();
   meLibDefaultInit();
+  for (u32 i = 1; i <= 64; i++) {
+
+    fireRequest = i;
+    while (fireDone != i) {
+    }
+  }
   fireGuInit();
   SceCtrlData ctl;
-  u32 request = 1;
+  u32 request = 65;
   u32 frame = 0;
   float camAngle = 0.0f;
   fireRequest = request;
