@@ -93,20 +93,20 @@ static void fireFieldClear(void) {
     heatA[i] = 0;
     heatB[i] = 0;
   }
-  int wx = 150;
+  int wx = 185;
   int wy = 0;
   for (int y = 0; y < FIRE_HEIGHT; y++) {
 
-    int amp = y > 48 ? (64 - y) : 16;
-    int sx = (wx * amp) >> 4;
-    int sy = (wy * amp) >> 4;
+    int amp = FIRE_HEIGHT - y;
+    int sx = (wx * amp) >> 6;
+    int sy = (wy * amp) >> 6;
     for (int x = 0; x < FIRE_ROW_CELLS; x++) {
 
       waveX[y * FIRE_ROW_CELLS + x] = (u32)sx;
       waveY[y * FIRE_ROW_CELLS + x] = (u32)sy;
     }
-    wx += wy >> 2;
-    wy -= wx >> 2;
+    wx += wy >> 4;
+    wy -= wx >> 4;
   }
   for (int i = 0; i < FIRE_ROW_CELLS; i++) {
 
@@ -541,7 +541,7 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     .offsets {
 
       .top4 = 0;
-      .top7 = 4;
+      .top7 = 2;
     }
   }
 
@@ -571,14 +571,14 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
   .pe3 {
 
-    x4 = c & 127;
-    amp = x4 + 160;
+    x4 = c & 63;
+    amp = x4 + 192;
   }
 
   .pe7 {
 
     .top = { count: FIRE_ROW_CELLS - 1, cyc: auto };
-    e2 = top7 >> 2;
+    e2 = top7 >> 1;
   }
 
   .pe4 {
