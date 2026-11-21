@@ -296,6 +296,113 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   sceGuSync(0, 0);
 }
 
+.kernel fireWave extended {
+
+  Transfer xIn = { memory: waveXPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer yIn = { memory: waveYPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer xOut = { memory: waveXPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer yOut = { memory: waveYPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer sOut = { memory: waveSwayPtr, count: FIRE_BAND_CELLS - 1 };
+
+  .load {
+
+    .transfer = xIn;
+    .scope = local;
+    .offsets {
+
+      .top0 = 0;
+    }
+  }
+
+  .load {
+
+    .transfer = yIn;
+    .scope = local;
+    .offsets {
+
+      .top1 = 0;
+    }
+  }
+
+  Agu lanes = { count: FIRE_BAND_CELLS - 1 };
+  Agu writeX = { count: FIRE_BAND_CELLS - 1, cyc: auto };
+  Agu writeY = { count: FIRE_BAND_CELLS - 1, cyc: auto };
+  Agu writeS = { count: FIRE_BAND_CELLS - 1, cyc: auto };
+  Staging x0, y0, nx, y1, ny, sw;
+
+  .pe0 {
+
+    .top = lanes;
+    x0 = top0;
+  }
+
+  .pe1 {
+
+    .top = lanes;
+    y0 = top1;
+  }
+
+  .pe2 {
+
+    nx = x0 + (y0 >> 3);
+  }
+
+  .pe3 {
+
+    y1 = y0;
+  }
+
+  .pe4 {
+
+    .write = writeY;
+    ny = y1 - (nx >> 3);
+    .spad = ny;
+  }
+
+  .pe5 {
+
+    .write = writeS;
+    sw = nx >> 6;
+    .spad = sw;
+  }
+
+  .pe6 {
+
+    .write = writeX;
+    .spad = nx;
+  }
+
+  .store {
+
+    .transfer = xOut;
+    .scope = local;
+    .offsets {
+
+      .base6 = 0;
+    }
+  }
+
+  .store {
+
+    .transfer = yOut;
+    .scope = local;
+    .offsets {
+
+      .base4 = 0;
+    }
+  }
+
+  .store {
+
+    .transfer = sOut;
+    .scope = local;
+    .offsets {
+
+      .base5 = 0;
+    }
+  }
+}
+
 .kernel fireStep pipeline {
 
   Transfer leftIn = { memory: leftPtr, count: FIRE_BAND_CELLS - 1 };
@@ -481,6 +588,11 @@ void meLibOnProcess(void) {
     for (int band = 0; band < 8; band++) {
 
       int row = band * FIRE_BAND_ROWS;
+      volatile Buffer* waveXPtr = waveX + row * FIRE_ROW_CELLS;
+      volatile Buffer* waveYPtr = waveY + row * FIRE_ROW_CELLS;
+      volatile Buffer* waveSwayPtr = waveSway + row * FIRE_ROW_CELLS;
+      @kernel fireWave config | exec {
+      }
       volatile Buffer* base = src + (row + 1) * FIRE_ROW_CELLS;
       volatile Buffer* leftPtr = base - 1;
       volatile Buffer* centerPtr = base;
