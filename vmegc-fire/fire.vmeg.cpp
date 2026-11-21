@@ -69,25 +69,16 @@ static void fireEnvelopeInit(void) {
   for (int p = 0; p < 120; p++) {
 
     int breath = 210 + ((p < 60 ? p : 120 - p) * 45) / 59;
-    for (int x = 0; x < FIRE_ROW_CELLS; x++) {
+    for (int x = 0; x < FIRE_ROW_CELLS / 2; x++) {
 
-      int d = x * 2 - (FIRE_ROW_CELLS - 1);
-      int ad = d < 0 ? -d : d;
-      int window = 255 - (ad * ad) / 48;
+      int ad = (FIRE_ROW_CELLS - 1) - x * 2;
+      int window = clamp255(255 - (ad * ad) / 48);
       int tri = (ad + p / 2) % 22;
-      int depth = (ad * 255) / 110;
-      if (window < 0) {
-
-        window = 0;
-      }
-      if (depth > 255) {
-
-        depth = 255;
-      }
-      int jag = ((tri < 11 ? tri : 22 - tri) * 255) / 11;
-      int teeth = 255 - (jag * depth) / 255;
-      int v = (((window * breath) >> 8) * teeth) >> 8;
-      fireEnvelopes[p][x] = (u32)(v > 255 ? 255 : v);
+      int jag = fireRamp(tri < 11 ? tri : 22 - tri, 0, 11);
+      int teeth = 255 - (jag * fireRamp(ad, 0, 110)) / 255;
+      u32 v = (u32)((((window * breath) >> 8) * teeth) >> 8);
+      fireEnvelopes[p][x] = v;
+      fireEnvelopes[p][FIRE_ROW_CELLS - 1 - x] = v;
     }
   }
 }
