@@ -321,14 +321,14 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     .offsets {
 
       .top1 = 0;
+      .top2 = 0;
     }
   }
 
   Agu lanes = { count: FIRE_BAND_CELLS - 1 };
-  Agu writeX = { count: FIRE_BAND_CELLS - 1, cyc: auto };
   Agu writeY = { count: FIRE_BAND_CELLS - 1, cyc: auto };
   Agu writeS = { count: FIRE_BAND_CELLS - 1, cyc: auto };
-  Staging x0, y0, nx, y1, ny, sw;
+  Staging x0, y0, nx, y1;
 
   .pe0 {
 
@@ -340,36 +340,25 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
 
     .top = lanes;
     y0 = top1;
+    nx = x0 + (y0 >> 4);
   }
 
   .pe2 {
 
-    nx = x0 + (y0 >> 3);
-  }
-
-  .pe3 {
-
-    y1 = y0;
+    .top = lanes;
+    y1 = top2;
   }
 
   .pe4 {
 
     .write = writeY;
-    ny = y1 - (nx >> 3);
-    .spad = ny;
+    .spad = y1 - (nx >> 4);
   }
 
   .pe5 {
 
     .write = writeS;
-    sw = nx >> 6;
-    .spad = sw;
-  }
-
-  .pe6 {
-
-    .write = writeX;
-    .spad = nx;
+    .spad = nx >> 6;
   }
 
   .store {
@@ -378,7 +367,7 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     .scope = local;
     .offsets {
 
-      .base6 = 0;
+      .base1 = 0;
     }
   }
 
