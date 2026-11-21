@@ -62,7 +62,7 @@ static void firePaletteInit(void) {
     firePal[i] = fireColor(
       fireRamp(i, 20, 110),
       (fireRamp(i, 0, 112) * 200) >> 8,
-      (fireRamp(i, 136, 250) * 140) >> 8,
+      (fireRamp(i, 136, 250) * 165) >> 8,
       (fireRamp(i, 200, 255) * 60) >> 8
     );
   }
@@ -244,8 +244,8 @@ static u32 nextClearColor(void) {
 
   static FireScale glow;
   static u32 rng = 0x13579bdfu;
-  float t = fireScaleStep(&glow, &rng, 0.0f, 1.0f, 12, 15);
-  return fireColor(255, 18 + (int)(26.0f * t), 8 + (int)(11.0f * t), 2 + (int)(3.0f * t));
+  float t = fireScaleStep(&glow, &rng, 0.0f, 1.0f, 5, 7);
+  return fireColor(255, 14 + (int)(14.0f * t), 6 + (int)(6.0f * t), 2 + (int)(1.0f * t));
 }
 
 static void firePaint3D(const volatile u32* field, float camAngle) {
@@ -518,7 +518,7 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   .pe7 {
 
     .write = writeOut;
-    out = (cooled & 128) ? cooled + 2 : cooled - 2;
+    out = (cooled & 128) ? cooled + 3 : cooled - 3;
     .spad = clamp(out, 0, 255);
   }
 
