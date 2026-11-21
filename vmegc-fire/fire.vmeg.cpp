@@ -403,12 +403,13 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   }
 }
 
-.kernel fireStep pipeline {
+.kernel fireStep extended {
 
   Transfer leftIn = { memory: leftPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer centerIn = { memory: centerPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer rightIn = { memory: rightPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer farIn = { memory: farPtr, count: FIRE_BAND_CELLS - 1 };
+  Transfer waveIn = { memory: waveSwayPtr, count: FIRE_BAND_CELLS - 1 };
   Transfer outBand = { memory: outPtr, count: FIRE_BAND_CELLS - 1 };
 
   .load {
@@ -451,21 +452,79 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     }
   }
 
-  .flow {
+  .load {
 
-    .count = FIRE_BAND_CELLS - 1;
-    Slot low = top0 + top1;
-    Slot high = top2 + top3;
-    Slot total = low + high;
-    Slot mul61 = total * 61;
-    Slot shifted = mul61 >> 8;
-    .slot = clamp(shifted - 1, 0, 255);
+    .transfer = waveIn;
+    .scope = local;
+    .offsets {
+
+      .top4 = 0;
+    }
+  }
+
+  Agu lanes = { count: FIRE_BAND_CELLS - 1 };
+  Agu writeOut = { count: FIRE_BAND_CELLS - 1, cyc: auto };
+  Staging l, c, r, f, low, high, diff, total, tilt, adv, cooled, out;
+
+  .pe0 {
+
+    .top = lanes;
+    l = top0;
+  }
+
+  .pe1 {
+
+    .top = lanes;
+    c = top1;
+    low = l + c;
+  }
+
+  .pe2 {
+
+    .top = lanes;
+    r = top2;
+    diff = l - r;
+  }
+
+  .pe3 {
+
+    .top = lanes;
+    f = top3;
+    high = r + f;
+  }
+
+  .pe4 {
+
+    .top = { count: FIRE_BAND_CELLS - 1 };
+    tilt = mulclp(top4, diff);
+    total = low + high;
+  }
+
+  .pe5 {
+
+    adv = total + (tilt >> 1);
+  }
+
+  .pe6 {
+
+    cooled = (adv * 62) >> 8;
+  }
+
+  .pe7 {
+
+    .write = writeOut;
+    out = (cooled & 128) ? cooled + 2 : cooled - 2;
+    .spad = clamp(out, 0, 255);
   }
 
   .store {
 
     .transfer = outBand;
     .scope = local;
+    .offsets {
+
+      .base7 = 0;
+    }
   }
 }
 
