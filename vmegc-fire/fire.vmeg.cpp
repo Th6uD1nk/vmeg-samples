@@ -58,7 +58,7 @@ static void firePaletteInit(void) {
     firePal[i] = fireColor(
       fireRamp(i, 20, 110),
       fireRamp(i, 0, 112),
-      fireRamp(i, 112, 224),
+      fireRamp(i, 128, 240),
       fireRamp(i, 176, 255)
     );
   }
@@ -72,7 +72,7 @@ static void fireEnvelopeInit(void) {
     for (int x = 0; x < FIRE_ROW_CELLS / 2; x++) {
 
       int ad = (FIRE_ROW_CELLS - 1) - x * 2;
-      int window = clamp255(255 - (ad * ad) / 48);
+      int window = clamp255(255 - ad * 2 - (ad * ad) / 140);
       int tri = (ad + p / 2) % 22;
       int jag = fireRamp(tri < 11 ? tri : 22 - tri, 0, 11);
       int teeth = 255 - (jag * fireRamp(ad, 0, 110)) / 255;
@@ -368,13 +368,14 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     .offsets {
 
       .top4 = 0;
+      .top7 = 4;
     }
   }
 
   Agu lanes = { count: FIRE_ROW_CELLS - 1 };
   Agu writeState = { count: FIRE_ROW_CELLS - 1, cyc: auto };
   Agu writeHeat = { count: FIRE_ROW_CELLS - 1, cyc: auto };
-  Staging x1, a, x2, b, x3, c, x4, amp, prod;
+  Staging x1, a, x2, b, x3, c, x4, amp, e2, env, prod;
 
   .pe0 {
 
@@ -401,10 +402,16 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
     amp = x4 + 160;
   }
 
+  .pe7 {
+
+    .top = { count: FIRE_ROW_CELLS - 1, cyc: auto };
+    e2 = top7 >> 2;
+  }
+
   .pe4 {
 
     .top = { count: FIRE_ROW_CELLS - 1, cyc: auto };
-    prod = amp * top4;
+    env = top4 + e2;
   }
 
   .pe5 {
@@ -416,7 +423,8 @@ static void firePaint3D(const volatile u32* field, float camAngle) {
   .pe6 {
 
     .write = writeHeat;
-    .spad = clamp(prod >> 8, 0, 255);
+    prod = (amp * env) >> 8;
+    .spad = clamp(prod, 0, 255);
   }
 
   .store {
