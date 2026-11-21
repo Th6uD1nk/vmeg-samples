@@ -256,6 +256,45 @@ static u32 nextClearColor(float level) {
   return fireColor(255, r, g, b);
 }
 
+#define FIRE_COUNT 22
+
+typedef struct {
+
+  float x, z, w, h;
+  int flip;
+} FireDesc;
+
+static FireDesc fires[FIRE_COUNT];
+
+static void fireRingInit(void) {
+
+  static const struct {
+
+    int count;
+    float radius, wMin, wMax, hMin, hMax, phase;
+  } rings[3] = {
+    { 5, 1.25f, 2.15f, 2.55f, 2.55f, 3.05f, 0.00f },
+    { 7, 2.25f, 1.75f, 2.10f, 1.75f, 2.25f, 0.45f },
+    { 9, 3.15f, 1.30f, 1.60f, 1.05f, 1.45f, 0.22f },
+  };
+  u32 rng = 0x51a7c3d9u;
+  fires[0] = { 0.0f, 0.0f, 2.90f, 3.70f, 0 };
+  int idx = 1;
+  for (int r = 0; r < 3; r++) {
+
+    float step = 6.2831853f / (float)rings[r].count;
+    for (int j = 0; j < rings[r].count; j++) {
+
+      float a = rings[r].phase + step * (float)j;
+      u32 v = rng = rng * 1664525u + 1013904223u;
+      float w = rings[r].wMin + (rings[r].wMax - rings[r].wMin) * ((float)((v >> 16) & 0xffu) / 255.0f);
+      float h = rings[r].hMin + (rings[r].hMax - rings[r].hMin) * ((float)((v >> 24) & 0xffu) / 255.0f);
+      fires[idx] = { rings[r].radius * cosf(a), rings[r].radius * sinf(a), w, h, idx & 1 };
+      idx += 1;
+    }
+  }
+}
+
 static void firePaint3D(const volatile u32* field, float camAngle) {
 
   static const struct {
@@ -713,6 +752,7 @@ int main() {
   firePaletteInit();
   fireGroundInit();
   firePatchInit();
+  fireRingInit();
   sceKernelDcacheWritebackInvalidateAll();
   meLibDefaultInit();
   for (u32 i = 1; i <= 64; i++) {
