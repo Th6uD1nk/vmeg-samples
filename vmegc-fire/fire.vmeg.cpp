@@ -273,12 +273,12 @@ static void fireRingInit(void) {
     int count;
     float radius, wMin, wMax, hMin, hMax, phase;
   } rings[3] = {
-    { 5, 1.25f, 2.15f, 2.55f, 2.55f, 3.05f, 0.00f },
-    { 7, 2.25f, 1.75f, 2.10f, 1.75f, 2.25f, 0.45f },
+    { 5, 1.25f, 2.25f, 2.65f, 3.00f, 3.60f, 0.00f },
+    { 7, 2.25f, 1.80f, 2.15f, 1.95f, 2.50f, 0.45f },
     { 9, 3.15f, 1.30f, 1.60f, 1.05f, 1.45f, 0.22f },
   };
   u32 rng = 0x51a7c3d9u;
-  fires[0] = { 0.0f, 0.0f, 2.90f, 3.70f, 0 };
+  fires[0] = { 0.0f, 0.0f, 3.15f, 4.50f, 0 };
   int idx = 1;
   for (int r = 0; r < 3; r++) {
 
